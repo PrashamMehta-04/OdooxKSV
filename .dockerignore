@@ -1,0 +1,10 @@
+.git
+.github
+.codex
+.agents
+*.pdf
+*.excalidraw
+README.md
+vendor
+bin
+

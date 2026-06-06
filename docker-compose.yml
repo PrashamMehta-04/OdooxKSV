@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: vendorbridge-db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vendorbridge-app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV}
+      HTTP_ADDR: ${HTTP_ADDR}
+      AUTH_SECRET: ${AUTH_SECRET}
+      DATABASE_URL: ${DATABASE_URL_DOCKER}
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
