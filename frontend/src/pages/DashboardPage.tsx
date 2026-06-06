@@ -2,36 +2,8 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { SectionCard } from '../components/SectionCard';
 import { apiFetch } from '../lib/api';
-import { formatCurrency, formatDateTime } from '../lib/format';
+import { formatCurrency, formatDateTime, formatActivity } from '../lib/format';
 import type { ActivityLog, DashboardMetrics, SpendTrendPoint } from '../lib/types';
-
-function formatActivity(item: ActivityLog) {
-  const meta = item.metadata;
-  switch (item.action) {
-    case 'rfq.created':
-      return `Created RFQ: ${String(meta.title || 'Untitled')}`;
-    case 'rfq.vendors.assigned':
-      return `Assigned ${String(meta.count || 0)} vendors to RFQ`;
-    case 'rfq.line_items.added':
-      return `Added ${String(meta.count || 0)} line items to RFQ`;
-    case 'quotation.submitted':
-      return `Submitted quote for ${formatCurrency(Number(meta.amount || 0))}`;
-    case 'quotation.selected':
-      return `Selected winning quotation`;
-    case 'approval.decided':
-      return `${String(meta.status === 'approved' ? 'Approved' : 'Rejected')} at ${String(meta.level)}`;
-    case 'purchase_order.created':
-      return `Generated PO #${String(meta.po_number)}`;
-    case 'invoice.created':
-      return `Generated Invoice #${String(meta.invoice_number)}`;
-    case 'invoice.sent':
-      return `Sent invoice to vendor`;
-    case 'vendor.created':
-      return `Registered vendor: ${String(meta.name || 'New Vendor')}`;
-    default:
-      return item.action.replace(/\./g, ' ').replace(/_/g, ' ');
-  }
-}
 
 export function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);

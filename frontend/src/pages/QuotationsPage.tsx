@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Badge } from '../components/Badge';
+import { useAuth } from '../lib/auth';
 import { apiFetch } from '../lib/api';
-import { formatCurrency, formatDateTime } from '../lib/format';
+import { formatCurrency, formatDateTime, statusTone } from '../lib/format';
 import type { Quotation, Vendor, RFQ } from '../lib/types';
 
 export function QuotationsPage() {
+  const { user } = useAuth();
+  const isInternal = user?.role !== 'vendor';
+
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [rfqs, setRfqs] = useState<RFQ[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedRfqId, setSelectedRfqId] = useState<string>('');
 
   async function load() {
-    const [q, r, v] = await Promise.all([
+    const promises: [Promise<Quotation[]>, Promise<RFQ[]>, Promise<Vendor[]>] = [
       apiFetch<Quotation[]>('/quotations'),
       apiFetch<RFQ[]>('/rfqs'),
-      apiFetch<Vendor[]>('/vendors'),
-    ]);
+      isInternal ? apiFetch<Vendor[]>('/vendors') : Promise.resolve([]),
+    ];
+
+    const [q, r, v] = await Promise.all(promises);
     setQuotations(q);
     setRfqs(r);
     setVendors(v);
@@ -52,7 +58,7 @@ export function QuotationsPage() {
       </div>
 
       {selectedRfqId ? (
-        <div className="comparison-grid">
+        <div className="data-grid">
           {filteredQuotes.length > 0 ? (
             filteredQuotes.map((q) => {
               const vendor = vendors.find(v => v.id === q.vendor_id);
@@ -60,47 +66,51 @@ export function QuotationsPage() {
               const isBestDelivery = q.delivery_days === minDelivery;
 
               return (
-                <div key={q.id} className={`comparison-card ${q.selected ? 'comparison-card--selected' : ''}`}>
-                  <div className="comparison-card__header">
-                    <strong>{vendor?.name || 'Unknown Vendor'}</strong>
-                    {q.selected && <Badge tone="success">Winner</Badge>}
+                <div key={q.id} className={`data-card ${q.selected ? 'row-highlight' : ''}`}>
+                  <div className="data-card__header">
+                    <div>
+                      <strong className="data-card__title">{vendor?.name || 'Unknown Vendor'}</strong>
+                      <div className="muted small">Submitted {formatDateTime(q.created_at)}</div>
+                    </div>
+                    <div className="row-actions">
+                      {q.selected && <Badge tone="success">Winner</Badge>}
+                      <Badge tone={statusTone(q.status)}>{q.status}</Badge>
+                    </div>
                   </div>
                   
-                  <div className="comparison-card__body">
-                    <div className="comparison-stat">
-                      <label>Total Amount</label>
-                      <div className={`comparison-stat__value ${isLowestPrice ? 'text-success' : ''}`}>
+                  <div className="data-card__stats">
+                    <div className="data-stat-row">
+                      <span className="label">Total Amount</span>
+                      <span className={`value ${isLowestPrice ? 'text-success' : ''}`}>
                         {formatCurrency(q.total_amount)}
-                        {isLowestPrice && <span className="mini-badge">Lowest</span>}
-                      </div>
+                        {isLowestPrice && <span className="mini-badge ml-1">Lowest</span>}
+                      </span>
                     </div>
 
-                    <div className="comparison-stat">
-                      <label>Delivery</label>
-                      <div className={`comparison-stat__value ${isBestDelivery ? 'text-info' : ''}`}>
+                    <div className="data-stat-row">
+                      <span className="label">Delivery</span>
+                      <span className={`value ${isBestDelivery ? 'text-info' : ''}`}>
                         {q.delivery_days} days
-                        {isBestDelivery && <span className="mini-badge mini-badge--info">Fastest</span>}
-                      </div>
+                        {isBestDelivery && <span className="mini-badge mini-badge--info ml-1">Fastest</span>}
+                      </span>
                     </div>
 
-                    <div className="comparison-stat">
-                      <label>Payment Terms</label>
-                      <p>{q.payment_terms || 'Standard'}</p>
+                    <div className="data-stat-row">
+                      <span className="label">Terms</span>
+                      <span className="value">{q.payment_terms || 'Standard'}</span>
                     </div>
 
-                    <div className="comparison-stat">
-                      <label>Rating</label>
-                      <p>{q.rating ? `${q.rating.toFixed(1)}/5` : 'N/A'}</p>
+                    <div className="data-stat-row">
+                      <span className="label">Rating</span>
+                      <span className="value">{q.rating ? `${q.rating.toFixed(1)}/5` : 'N/A'}</span>
                     </div>
                   </div>
 
-                  <div className="comparison-card__footer">
-                    {!q.selected && q.status !== 'rejected' && (
-                      <button className="button button--primary full-width" onClick={() => selectWinner(q.id)}>Select as Winner</button>
-                    )}
-                    {q.status === 'rejected' && <Badge tone="danger">Rejected</Badge>}
-                    <div className="muted small mt-2">Submitted {formatDateTime(q.created_at)}</div>
-                  </div>
+                  {isInternal && !q.selected && q.status !== 'rejected' && (
+                    <div className="data-card__footer">
+                      <button className="button button--primary" onClick={() => selectWinner(q.id)}>Select as Winner</button>
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -114,4 +124,3 @@ export function QuotationsPage() {
     </>
   );
 }
-

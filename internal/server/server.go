@@ -58,22 +58,31 @@ func (s *Server) Router() http.Handler {
 			s.withAuth(w, r, allowedRolesAny(), s.handleDashboard)
 		})
 		r.Get("/vendors", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListVendors)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleListVendors)
+		})
+		r.Get("/vendors/me", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager", "vendor"), s.handleVendorMe)
 		})
 		r.Post("/vendors", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleCreateVendor)
 		})
-		r.Get("/vendors/{id}", s.handleGetVendor)
-		r.Patch("/vendors/{id}", s.handleUpdateVendor)
-		r.Delete("/vendors/{id}", s.handleDeleteVendor)
+		r.Get("/vendors/{id}", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleGetVendor)
+		})
+		r.Patch("/vendors/{id}", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleUpdateVendor)
+		})
+		r.Delete("/vendors/{id}", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRoles("admin", "procurement_head"), s.handleDeleteVendor)
+		})
 		r.Get("/rfqs", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListRFQs)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor"), s.handleListRFQs)
 		})
 		r.Post("/rfqs", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleCreateRFQ)
 		})
 		r.Get("/rfqs/{id}", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleGetRFQ)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor"), s.handleGetRFQ)
 		})
 		r.Post("/rfqs/{id}/line-items", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleAddRFQLineItems)
@@ -85,13 +94,13 @@ func (s *Server) Router() http.Handler {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleAddRFQAttachments)
 		})
 		r.Get("/rfqs/{id}/quotations", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListQuotationsByRFQ)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor"), s.handleListQuotationsByRFQ)
 		})
 		r.Get("/quotations", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListQuotations)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor"), s.handleListQuotations)
 		})
 		r.Get("/quotations/{id}", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleGetQuotation)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor"), s.handleGetQuotation)
 		})
 		r.Post("/rfqs/{id}/quotations", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "vendor"), s.handleCreateQuotation)
@@ -100,34 +109,34 @@ func (s *Server) Router() http.Handler {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), s.handleSelectQuotation)
 		})
 		r.Get("/approvals", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListApprovals)
+			s.withAuth(w, r, allowedRoles("admin", "procurement_head", "finance_manager"), s.handleListApprovals)
 		})
 		r.Get("/approvals/{id}", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleGetApproval)
+			s.withAuth(w, r, allowedRoles("admin", "procurement_head", "finance_manager"), s.handleGetApproval)
 		})
 		r.Post("/approvals/{id}/decide", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRoles("admin", "officer", "finance_manager", "procurement_head"), s.handleDecideApproval)
+			s.withAuth(w, r, allowedRoles("admin", "finance_manager", "procurement_head"), s.handleDecideApproval)
 		})
 		r.Get("/purchase-orders", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListPurchaseOrders)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor", "finance_manager"), s.handleListPurchaseOrders)
 		})
 		r.Get("/purchase-orders/{id}", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleGetPurchaseOrder)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "vendor", "finance_manager"), s.handleGetPurchaseOrder)
 		})
 		r.Get("/invoices", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListInvoices)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleListInvoices)
 		})
 		r.Get("/invoices/{id}", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleGetInvoice)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleGetInvoice)
 		})
 		r.Post("/invoices/{id}/send", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "finance_manager", "procurement_head"), s.handleSendInvoice)
 		})
 		r.Get("/activity", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleListActivity)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleListActivity)
 		})
 		r.Get("/reports/spend-trend", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRolesAny(), s.handleSpendTrend)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleSpendTrend)
 		})
 
 		// User Management (Admin only)
@@ -399,6 +408,22 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, ac auth
 	})
 }
 
+func (s *Server) handleVendorMe(w http.ResponseWriter, r *http.Request, ac authContext) {
+	user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "vendor profile not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, vendor)
+}
+
 func (s *Server) handleListVendors(w http.ResponseWriter, r *http.Request, ac authContext) {
 	vendors, err := s.store.ListVendors(r.Context(), store.VendorFilters{
 		Search: r.URL.Query().Get("search"),
@@ -488,50 +513,44 @@ func (s *Server) handleVendorByID(w http.ResponseWriter, r *http.Request, id str
 	}
 }
 
-func (s *Server) handleGetVendor(w http.ResponseWriter, r *http.Request) {
-	s.withAuth(w, r, nil, func(w http.ResponseWriter, r *http.Request, ac authContext) {
-		vendor, err := s.store.GetVendor(r.Context(), chi.URLParam(r, "id"))
-		if err != nil {
-			respondError(w, http.StatusNotFound, "vendor not found")
-			return
-		}
-		writeJSON(w, http.StatusOK, vendor)
-	})
+func (s *Server) handleGetVendor(w http.ResponseWriter, r *http.Request, ac authContext) {
+	vendor, err := s.store.GetVendor(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusNotFound, "vendor not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, vendor)
 }
 
-func (s *Server) handleUpdateVendor(w http.ResponseWriter, r *http.Request) {
-	s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head"), func(w http.ResponseWriter, r *http.Request, ac authContext) {
-		var req vendorRequest
-		if err := decodeJSON(r, &req); err != nil {
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		vendor, err := s.store.UpdateVendor(r.Context(), chi.URLParam(r, "id"), store.UpdateVendorParams{
-			Name:          req.Name,
-			GSTNumber:     req.GSTNumber,
-			Category:      req.Category,
-			ContactNumber: req.ContactNumber,
-			Email:         req.Email,
-			Country:       req.Country,
-			Status:        req.Status,
-			Notes:         req.Notes,
-		}, ac.Claims.UserID)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, vendor)
-	})
+func (s *Server) handleUpdateVendor(w http.ResponseWriter, r *http.Request, ac authContext) {
+	var req vendorRequest
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	vendor, err := s.store.UpdateVendor(r.Context(), chi.URLParam(r, "id"), store.UpdateVendorParams{
+		Name:          req.Name,
+		GSTNumber:     req.GSTNumber,
+		Category:      req.Category,
+		ContactNumber: req.ContactNumber,
+		Email:         req.Email,
+		Country:       req.Country,
+		Status:        req.Status,
+		Notes:         req.Notes,
+	}, ac.Claims.UserID)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, vendor)
 }
 
-func (s *Server) handleDeleteVendor(w http.ResponseWriter, r *http.Request) {
-	s.withAuth(w, r, allowedRoles("admin", "procurement_head"), func(w http.ResponseWriter, r *http.Request, ac authContext) {
-		if err := s.store.DeleteVendor(r.Context(), chi.URLParam(r, "id"), ac.Claims.UserID); err != nil {
-			respondError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
-	})
+func (s *Server) handleDeleteVendor(w http.ResponseWriter, r *http.Request, ac authContext) {
+	if err := s.store.DeleteVendor(r.Context(), chi.URLParam(r, "id"), ac.Claims.UserID); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 func (s *Server) handleListRFQs(w http.ResponseWriter, r *http.Request, ac authContext) {
@@ -542,14 +561,10 @@ func (s *Server) handleListRFQs(w http.ResponseWriter, r *http.Request, ac authC
 		Offset: parseIntQuery(r, "offset", 0),
 	}
 
-	if strings.ToLower(ac.Claims.Role) == "vendor" {
-		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
-		if err == nil {
-			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
-			if err == nil {
-				filters.VendorID = vendor.ID
-			}
-		}
+	// Vendors see all non-draft RFQs.
+	if strings.ToLower(ac.Claims.Role) == "vendor" && filters.Status == "" {
+		// We could implement this in the Store, but for now we filter here or just set a default status
+		// Let's just ensure vendors can't see 'draft'
 	}
 
 	rfqs, err := s.store.ListRFQs(r.Context(), filters)
@@ -557,6 +572,18 @@ func (s *Server) handleListRFQs(w http.ResponseWriter, r *http.Request, ac authC
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	// Filter out drafts for vendors if they didn't specify a status
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		filtered := make([]domain.RFQ, 0)
+		for _, rfq := range rfqs {
+			if rfq.Status != "draft" {
+				filtered = append(filtered, rfq)
+			}
+		}
+		rfqs = filtered
+	}
+
 	writeJSON(w, http.StatusOK, rfqs)
 }
 

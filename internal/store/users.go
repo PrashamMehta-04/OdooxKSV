@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"vendorbridge/internal/domain"
@@ -28,13 +29,40 @@ type UpdateUserParams struct {
 }
 
 func (s *Store) CreateUser(ctx context.Context, params CreateUserParams) (domain.User, error) {
-	row := s.db.QueryRowContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.User{}, err
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRowContext(ctx, `
 		INSERT INTO users (full_name, email, password_hash, role, country, phone_number, photo_url, additional_info)
 		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''))
 		RETURNING id::text, full_name, email, role, COALESCE(country, ''), COALESCE(phone_number, ''), COALESCE(photo_url, ''), COALESCE(additional_info, ''), created_at, updated_at
 	`, params.FullName, params.Email, params.PasswordHash, params.Role, params.Country, params.PhoneNumber, params.PhotoURL, params.AdditionalInfo)
 
-	return scanUser(row)
+	user, err := scanUser(row)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	if strings.ToLower(user.Role) == "vendor" {
+		// Ensure vendor record exists
+		// We use the USER ID as the VENDOR ID to ensure consistency and fix FK issues
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO vendors (id, name, email, country, contact_number, status)
+			VALUES ($1::uuid, $2, $3, NULLIF($4, ''), NULLIF($5, ''), 'pending')
+			ON CONFLICT (email) DO UPDATE SET 
+				name = EXCLUDED.name,
+				country = COALESCE(NULLIF(EXCLUDED.country, ''), vendors.country),
+				contact_number = COALESCE(NULLIF(EXCLUDED.contact_number, ''), vendors.contact_number)
+		`, user.ID, user.FullName, user.Email, user.Country, user.PhoneNumber)
+		if err != nil {
+			return domain.User{}, fmt.Errorf("create shadow vendor: %w", err)
+		}
+	}
+
+	return user, tx.Commit()
 }
 
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (domain.User, string, error) {
@@ -75,8 +103,7 @@ func (s *Store) ListUsers(ctx context.Context) ([]domain.User, error) {
 	users := make([]domain.User, 0)
 	for rows.Next() {
 		var user domain.User
-		err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Country, &user.PhoneNumber, &user.PhotoURL, &user.AdditionalInfo, &user.CreatedAt, &user.UpdatedAt)
-		if err != nil {
+		if err := rows.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Country, &user.PhoneNumber, &user.PhotoURL, &user.AdditionalInfo, &user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -85,7 +112,13 @@ func (s *Store) ListUsers(ctx context.Context) ([]domain.User, error) {
 }
 
 func (s *Store) UpdateUser(ctx context.Context, id string, params UpdateUserParams) (domain.User, error) {
-	row := s.db.QueryRowContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return domain.User{}, err
+	}
+	defer tx.Rollback()
+
+	row := tx.QueryRowContext(ctx, `
 		UPDATE users
 		SET full_name = COALESCE($2, full_name),
 		    role = COALESCE($3, role),
@@ -96,7 +129,24 @@ func (s *Store) UpdateUser(ctx context.Context, id string, params UpdateUserPara
 		RETURNING id::text, full_name, email, role, COALESCE(country, ''), COALESCE(phone_number, ''), COALESCE(photo_url, ''), COALESCE(additional_info, ''), created_at, updated_at
 	`, id, params.FullName, params.Role, params.Country, params.PhoneNumber)
 
-	return scanUser(row)
+	var user domain.User
+	if err := row.Scan(&user.ID, &user.FullName, &user.Email, &user.Role, &user.Country, &user.PhoneNumber, &user.PhotoURL, &user.AdditionalInfo, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		return domain.User{}, err
+	}
+
+	if strings.ToLower(user.Role) == "vendor" {
+		// Ensure vendor record exists
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO vendors (name, email, country, contact_number, status)
+			VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), 'pending')
+			ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+		`, user.FullName, user.Email, user.Country, user.PhoneNumber)
+		if err != nil {
+			return domain.User{}, fmt.Errorf("create/update shadow vendor: %w", err)
+		}
+	}
+
+	return user, tx.Commit()
 }
 
 func (s *Store) DeleteUser(ctx context.Context, id string) error {

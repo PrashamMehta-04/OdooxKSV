@@ -10,6 +10,8 @@ import type { AuthUser } from '../lib/types';
 export function UsersPage() {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     full_name: '',
     role: '',
@@ -18,8 +20,16 @@ export function UsersPage() {
   });
 
   async function load() {
-    const data = await apiFetch<AuthUser[]>('/users');
-    setUsers(data);
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch<AuthUser[]>('/users');
+      setUsers(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -40,35 +50,44 @@ export function UsersPage() {
     e.preventDefault();
     if (!editingId) return;
 
-    await apiFetch(`/users/${editingId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(form),
-    });
-
-    setEditingId(null);
-    void load();
+    try {
+      await apiFetch(`/users/${editingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(form),
+      });
+      setEditingId(null);
+      void load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update user');
+    }
   }
 
   async function onDelete(id: string) {
     if (!confirm('Are you sure you want to delete this user?')) return;
-    await apiFetch(`/users/${id}`, { method: 'DELETE' });
-    void load();
+    try {
+      await apiFetch(`/users/${id}`, { method: 'DELETE' });
+      void load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
+    }
   }
 
   return (
     <>
       <PageHeader eyebrow="Administration" title="User Management" description="Control system access and assign roles to registered members." />
       
+      {error && <div className="form-error mb-4">{error}</div>}
+
       <div className="two-col two-col--wide">
         <SectionCard 
-          title={editingId ? 'Edit User Role' : 'Select a User'} 
-          subtitle={editingId ? `Updating permissions for ${form.full_name}` : 'Manage registered accounts.'}
+          title={editingId ? 'Edit Permissions' : 'User Security'} 
+          subtitle={editingId ? `Context: ${form.full_name}` : 'Select a user to modify their role.'}
         >
           {editingId ? (
             <form className="modern-form" onSubmit={onUpdate}>
               <div className="form-sections-grid">
                 <div className="form-group-section">
-                  <h4 className="section-header">Identity & Role</h4>
+                  <h4 className="section-header">Access Control</h4>
                   <div className="field-grid">
                     <TextField label="Full Name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
                     <SelectField label="System Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
@@ -83,7 +102,7 @@ export function UsersPage() {
                 </div>
 
                 <div className="form-group-section">
-                  <h4 className="section-header">Contact Information</h4>
+                  <h4 className="section-header">Profile Details</h4>
                   <div className="field-grid">
                     <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
                     <TextField label="Phone" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} />
@@ -97,38 +116,44 @@ export function UsersPage() {
               </div>
             </form>
           ) : (
-            <div className="empty-state">Select a user from the directory to manage their access.</div>
+            <div className="empty-state">Choose an account from the directory to manage access levels.</div>
           )}
         </SectionCard>
 
-        <SectionCard title="User Directory" subtitle="All registered accounts.">
+        <SectionCard title="Registered Users" subtitle="System access directory.">
           <div className="data-grid">
-            {users.map((u) => (
-              <div key={u.id} className={`data-card ${editingId === u.id ? 'row-highlight' : ''}`}>
-                <div className="data-card__header">
-                  <div className="activity-row">
-                    <div className="vendor-avatar-mini">{u.full_name.charAt(0)}</div>
-                    <div>
-                      <strong className="data-card__title">{u.full_name}</strong>
-                      <div className="muted small">{u.email}</div>
+            {loading ? (
+              <div className="empty-state">Loading users...</div>
+            ) : users.length > 0 ? (
+              users.map((u) => (
+                <div key={u.id} className={`data-card ${editingId === u.id ? 'row-highlight' : ''}`}>
+                  <div className="data-card__header">
+                    <div className="activity-row">
+                      <div className="vendor-avatar-mini">{u.full_name.charAt(0)}</div>
+                      <div>
+                        <strong className="data-card__title">{u.full_name}</strong>
+                        <div className="muted small">{u.email}</div>
+                      </div>
+                    </div>
+                    <Badge tone={statusTone(u.role === 'admin' ? 'approved' : u.role === 'pending' ? 'pending' : 'info')}>{u.role}</Badge>
+                  </div>
+
+                  <div className="data-card__stats">
+                    <div className="data-stat-row">
+                      <span className="label">Access</span>
+                      <span className="value text-uppercase">{u.role}</span>
                     </div>
                   </div>
-                  <Badge tone={statusTone(u.role === 'admin' ? 'approved' : u.role === 'pending' ? 'pending' : 'info')}>{u.role}</Badge>
-                </div>
 
-                <div className="data-card__stats">
-                  <div className="data-stat-row">
-                    <span className="label">Country</span>
-                    <span className="value">{u.country || '—'}</span>
+                  <div className="data-card__footer">
+                    <button className="button button--ghost small" onClick={() => onEdit(u)}>Manage Role</button>
+                    <button className="button button--ghost small text-danger" onClick={() => onDelete(u.id)}>Delete</button>
                   </div>
                 </div>
-
-                <div className="data-card__footer">
-                  <button className="button button--ghost small" onClick={() => onEdit(u)}>Edit Role</button>
-                  <button className="button button--ghost small text-danger" onClick={() => onDelete(u.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="empty-state">No users registered yet.</div>
+            )}
           </div>
         </SectionCard>
       </div>

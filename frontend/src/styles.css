@@ -1033,4 +1033,9 @@ a {
   letter-spacing: 0.05em;
 }
 
+.mt-2 { margin-top: 8px; }
+.ml-1 { margin-left: 4px; }
+.full-width { grid-column: 1 / -1; }
+.ml-auto { margin-left: auto; }
+
 

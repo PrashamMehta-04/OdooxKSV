@@ -5,11 +5,9 @@ import { TextField, TextAreaField } from '../components/Field';
 import { Badge } from '../components/Badge';
 import { apiFetch } from '../lib/api';
 import { formatCurrency, formatDateTime, statusTone } from '../lib/format';
-import { useAuth } from '../lib/auth';
 import type { RFQ, RFQLineItem, Vendor } from '../lib/types';
 
 export function VendorSubmissionsPage() {
-  const { user } = useAuth();
   const [rfqs, setRfqs] = useState<RFQ[]>([]);
   const [selectedRfqId, setSelectedRfqId] = useState<string>('');
   const [lineItems, setLineItems] = useState<RFQLineItem[]>([]);
@@ -25,14 +23,16 @@ export function VendorSubmissionsPage() {
   const [prices, setPrices] = useState<Record<string, number>>({});
 
   async function load() {
-    const [rfqList, vendorList] = await Promise.all([
-      apiFetch<RFQ[]>('/rfqs'),
-      apiFetch<Vendor[]>('/vendors'),
-    ]);
-    setRfqs(rfqList);
-    // Find matching vendor by email
-    const me = vendorList.find(v => v.email === user?.email);
-    if (me) setVendor(me);
+    try {
+      const [rfqList, me] = await Promise.all([
+        apiFetch<RFQ[]>('/rfqs'),
+        apiFetch<Vendor>('/vendors/me'),
+      ]);
+      setRfqs(rfqList);
+      setVendor(me);
+    } catch (err) {
+      console.error('Failed to load vendor profile:', err);
+    }
   }
 
   useEffect(() => {
