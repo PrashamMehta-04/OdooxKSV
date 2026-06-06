@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -145,10 +147,10 @@ func (s *Server) Router() http.Handler {
 			s.withAuth(w, r, allowedRolesAny(), s.handleReadNotification)
 		})
 		r.Get("/reports/spend-trend", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleSpendTrend)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager", "vendor"), s.handleSpendTrend)
 		})
 		r.Get("/reports/stats", func(w http.ResponseWriter, r *http.Request) {
-			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleReportsStats)
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager", "vendor"), s.handleReportsStats)
 		})
 
 		// User Management (Admin only)
@@ -1073,26 +1075,17 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 	// Verify user exists (optional, but good for UX)
 	_, _, err := s.store.GetUserByEmail(r.Context(), email)
 	if err != nil {
-		// We don't want to leak user existence, so we return 200 regardless
-		// but in a controlled environment like this, we can be more explicit
+		s.logger.Warn("password reset requested for non-existent email", "email", email)
 		writeJSON(w, http.StatusOK, map[string]string{"message": "If an account exists for this email, an OTP has been sent."})
 		return
 	}
 
-	// Generate 6-digit OTP
+	// Generate secure 6-digit OTP
 	otp := ""
 	for i := 0; i < 6; i++ {
-		otp += strconv.Itoa(int(time.Now().UnixNano()) % 10) // Simple but not secure enough for production
+		num, _ := rand.Int(rand.Reader, big.NewInt(10))
+		otp += num.String()
 	}
-	// Better random:
-	/*
-		b := make([]byte, 6)
-		_, _ = rand.Read(b)
-		otp = ""
-		for _, v := range b {
-			otp += strconv.Itoa(int(v) % 10)
-		}
-	*/
 
 	// Store OTP (valid for 15 minutes)
 	err = s.store.CreateOTP(r.Context(), email, otp, time.Now().Add(15*time.Minute))

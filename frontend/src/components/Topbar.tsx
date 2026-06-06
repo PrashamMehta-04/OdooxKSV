@@ -128,7 +128,7 @@ export function Topbar({
               <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
             </svg>
           </button>
-          <div className="sidebar__brand" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <div className="sidebar__brand mobile-only" style={{ border: 'none', padding: 0, margin: 0 }}>
             <img src="/logo.svg" alt="VB" className="brand-mark" style={{ width: '32px', height: '32px' }} />
             <div>
               <div className="brand-title" style={{ color: 'var(--text)' }}>VendorBridge</div>

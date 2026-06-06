@@ -21,7 +21,7 @@ export function ForgotPasswordPage() {
       });
       setMessage(resp.message);
       setTimeout(() => {
-        navigate('reset-password');
+        window.location.hash = `reset-password?email=${encodeURIComponent(email)}`;
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request OTP');

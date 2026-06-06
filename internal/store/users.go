@@ -136,11 +136,15 @@ func (s *Store) UpdateUser(ctx context.Context, id string, params UpdateUserPara
 
 	if strings.ToLower(user.Role) == "vendor" {
 		// Ensure vendor record exists
+		// We use the USER ID as the VENDOR ID to ensure consistency and fix FK issues
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO vendors (name, email, country, contact_number, status)
-			VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), 'pending')
-			ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
-		`, user.FullName, user.Email, user.Country, user.PhoneNumber)
+			INSERT INTO vendors (id, name, email, country, contact_number, status)
+			VALUES ($1::uuid, $2, $3, NULLIF($4, ''), NULLIF($5, ''), 'pending')
+			ON CONFLICT (email) DO UPDATE SET 
+				name = EXCLUDED.name,
+				country = COALESCE(NULLIF(EXCLUDED.country, ''), vendors.country),
+				contact_number = COALESCE(NULLIF(EXCLUDED.contact_number, ''), vendors.contact_number)
+		`, user.ID, user.FullName, user.Email, user.Country, user.PhoneNumber)
 		if err != nil {
 			return domain.User{}, fmt.Errorf("create/update shadow vendor: %w", err)
 		}

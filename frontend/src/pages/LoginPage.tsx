@@ -5,7 +5,7 @@ import { navigate } from '../lib/router';
 
 export function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('demo@vendorbridge.local');
+  const [email, setEmail] = useState('demo1@demo.com');
   const [password, setPassword] = useState('password');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

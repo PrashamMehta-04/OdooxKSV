@@ -233,7 +233,7 @@ a {
 }
 
 .mobile-only {
-  display: none;
+  display: none !important;
 }
 
 /* Global Responsive Overrides */
@@ -266,7 +266,7 @@ a {
   }
 
   .mobile-only {
-    display: flex;
+    display: flex !important;
   }
 
   .app-main__content {
