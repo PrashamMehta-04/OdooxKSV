@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  # ─── PostgreSQL Database ────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: vendorbridge_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vendorbridge
+      POSTGRES_USER: vendorbridge
+      POSTGRES_PASSWORD: vendorbridge_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendorbridge -d vendorbridge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Backend API ─────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vendorbridge_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://vendorbridge:vendorbridge_pass@db:5432/vendorbridge
+      JWT_SECRET: vendorbridge_secret_key_2024
+      PORT: 3001
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─── Frontend (React → nginx) ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vendorbridge_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: vendorbridge_postgres_data

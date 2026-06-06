@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+**/dist/
+
+# Environment files (never commit real secrets)
+.env
+**/.env
+!**/.env.example
+
+# Database files
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+backend/prisma/dev.db
+
+# Prisma generated
+backend/prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
