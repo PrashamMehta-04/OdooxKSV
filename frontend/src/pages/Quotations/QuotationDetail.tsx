@@ -55,8 +55,8 @@ const QuotationDetail: React.FC = () => {
   if (isLoading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
   if (!quotation) return null;
 
-  const rfq = typeof quotation.rfqId === 'object' ? quotation.rfqId as RFQ : null;
-  const vendor = typeof quotation.vendorId === 'object' ? quotation.vendorId as Vendor : null;
+  const rfq = quotation.rfq || (typeof quotation.rfqId === 'object' ? quotation.rfqId as RFQ : null);
+  const vendor = quotation.vendor || (typeof quotation.vendorId === 'object' ? quotation.vendorId as Vendor : null);
 
   const formatDate = (d: string) => {
     try { return format(new Date(d), 'MMM d, yyyy'); } catch { return d; }
@@ -125,14 +125,16 @@ const QuotationDetail: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {quotation.items.map((item, i) => {
-                const rfqItem = typeof item.rfqItemId === 'object' ? item.rfqItemId as RFQItem : null;
+                const rfqItem = item.rfqItem || (typeof item.rfqItemId === 'object' ? item.rfqItemId as RFQItem : null);
                 return (
                   <tr key={item.id || i}>
                     <td className="px-4 py-2.5 text-sm font-medium text-gray-800">{rfqItem?.productName || '—'}</td>
-                    <td className="px-4 py-2.5 text-sm text-gray-600">{rfqItem?.quantity} {rfqItem?.unit}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-600">
+                      {rfqItem?.quantity} {rfqItem?.unit}
+                    </td>
                     <td className="px-4 py-2.5 text-sm text-gray-700">{formatCurrency(item.unitPrice)}</td>
                     <td className="px-4 py-2.5 text-sm font-medium text-gray-800">
-                      {formatCurrency(item.unitPrice * (rfqItem?.quantity || 1))}
+                      {formatCurrency(item.totalPrice)}
                     </td>
                     <td className="px-4 py-2.5 text-sm text-gray-500">{item.notes || '—'}</td>
                   </tr>
