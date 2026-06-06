@@ -33,6 +33,11 @@ import { apiRequest } from "./lib/api";
 
 import { VendorsPage } from "./features/vendors/VendorsPage";
 
+import { RfqsPage } from "./features/rfqs/RfqsPage";
+import { RfqCreationPage } from "./features/rfqs/RfqCreationPage";
+import { RfqDetailPage } from "./features/rfqs/RfqDetailPage";
+import { QuotationComparisonPage } from "./features/quotations/QuotationComparisonPage";
+
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
   PROCUREMENT_OFFICER: "Procurement Officer",
@@ -66,7 +71,7 @@ const modules: Array<{
     description: "Create RFQs with quantities, deadlines, attachments, and vendor assignments.",
     path: "/procurement/rfqs",
     icon: ClipboardList,
-    roles: ["PROCUREMENT_OFFICER"]
+    roles: ["PROCUREMENT_OFFICER", "ADMIN"]
   },
   {
     title: "Approvals",
@@ -197,10 +202,19 @@ export function App() {
             <Route index element={<VendorsPage />} />
           </Route>
           <Route
-            element={<ProtectedRoute roles={["PROCUREMENT_OFFICER"]} />}
+            element={<ProtectedRoute roles={["PROCUREMENT_OFFICER", "ADMIN"]} />}
             path="/procurement/rfqs"
           >
-            <Route index element={<RoleModulePage title="RFQs" icon={ClipboardList} />} />
+            <Route index element={<RfqsPage />} />
+            <Route path="new" element={<RfqCreationPage />} />
+            <Route path=":id" element={<RfqDetailPage />} />
+            <Route path=":id/compare" element={<QuotationComparisonPage />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute roles={["MANAGER"]} />}
+            path="/approvals"
+          >
+            <Route index element={<RoleModulePage title="Approvals" icon={ShieldCheck} />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["PROCUREMENT_OFFICER"]} />}
@@ -208,20 +222,24 @@ export function App() {
           >
             <Route index element={<RoleModulePage title="Invoices" icon={FileText} />} />
           </Route>
-          <Route element={<ProtectedRoute roles={["MANAGER"]} />} path="/approvals">
-            <Route index element={<RoleModulePage title="Approvals" icon={ShieldCheck} />} />
-          </Route>
-          <Route element={<ProtectedRoute roles={["VENDOR"]} />} path="/vendor/rfqs">
-            <Route index element={<RoleModulePage title="Vendor RFQs" icon={Users} />} />
-          </Route>
           <Route
             element={<ProtectedRoute roles={["ADMIN", "PROCUREMENT_OFFICER", "MANAGER"]} />}
             path="/activity"
           >
             <Route index element={<RoleModulePage title="Activity" icon={Activity} />} />
           </Route>
-          <Route element={<ProtectedRoute roles={["ADMIN"]} />} path="/reports">
+          <Route
+            element={<ProtectedRoute roles={["ADMIN"]} />}
+            path="/reports"
+          >
             <Route index element={<RoleModulePage title="Reports" icon={BarChart3} />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute roles={["VENDOR"]} />}
+            path="/vendor/rfqs"
+          >
+            <Route index element={<RfqsPage />} />
+            <Route path=":id" element={<RfqDetailPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

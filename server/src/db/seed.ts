@@ -68,7 +68,7 @@ try {
         "Industrial Equipment",
         "27AALCA1234A1Z5",
         "Neha Kapoor",
-        "sales@alphaindustrial.local",
+        "vendor@vendorbridge.local",
         "+91-9876543210",
         "Andheri East, Mumbai",
         "ACTIVE",

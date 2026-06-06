@@ -9,6 +9,9 @@ import { dashboardRouter } from "./dashboard/dashboard.routes.js";
 import { apiRouteMap } from "./domain/api-route-map.js";
 
 import { vendorsRouter } from "./vendors/vendors.routes.js";
+import { rfqsRouter } from "./rfqs/rfqs.routes.js";
+import { quotationsRouter } from "./quotations/quotations.routes.js";
+import { approvalsRouter } from "./approvals/approvals.routes.js";
 
 export const app = express();
 
@@ -54,3 +57,6 @@ app.get("/api/meta/routes", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/vendors", vendorsRouter);
+app.use("/api/rfqs", rfqsRouter);
+app.use("/api/quotations", quotationsRouter);
+app.use("/api/approvals", approvalsRouter);

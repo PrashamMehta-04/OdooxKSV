@@ -4,6 +4,8 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import { roles } from "../domain/types.js";
 import { createUser, findUserByEmail, findUserById, toAuthUser } from "./auth.repository.js";
+import { requireAuth } from "./auth.middleware.js";
+import { db } from "../db/client.js";
 import {
   createAccessToken,
   createRefreshToken,
@@ -152,6 +154,18 @@ authRouter.post("/refresh", async (req, res) => {
   } catch {
     clearRefreshCookie(res);
     res.status(401).json({ message: "Invalid or expired refresh session." });
+  }
+});
+
+authRouter.get("/managers", requireAuth, async (_req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, name, role FROM users WHERE role = 'MANAGER' AND status = 'ACTIVE'`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch managers" });
   }
 });
 
