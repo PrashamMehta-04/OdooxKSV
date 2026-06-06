@@ -67,28 +67,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [logout]);
 
   const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
-    if (res.data.success) {
-      const { token: newToken, user: newUser } = res.data.data;
-      localStorage.setItem('vendorbridge_token', newToken);
-      localStorage.setItem('vendorbridge_user', JSON.stringify(newUser));
-      setToken(newToken);
-      setUser(newUser);
-    } else {
-      throw new Error(res.data.message || 'Login failed');
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      if (res.data.success) {
+        const { token: newToken, user: newUser } = res.data.data;
+        localStorage.setItem('vendorbridge_token', newToken);
+        localStorage.setItem('vendorbridge_user', JSON.stringify(newUser));
+        setToken(newToken);
+        setUser(newUser);
+      } else {
+        throw new Error(res.data.message || 'Login failed');
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Login failed';
+      throw new Error(message);
     }
   };
 
   const signup = async (data: SignupData) => {
-    const res = await api.post('/auth/signup', data);
-    if (res.data.success) {
-      const { token: newToken, user: newUser } = res.data.data;
-      localStorage.setItem('vendorbridge_token', newToken);
-      localStorage.setItem('vendorbridge_user', JSON.stringify(newUser));
-      setToken(newToken);
-      setUser(newUser);
-    } else {
-      throw new Error(res.data.message || 'Signup failed');
+    try {
+      const res = await api.post('/auth/signup', data);
+      if (res.data.success) {
+        const { token: newToken, user: newUser } = res.data.data;
+        localStorage.setItem('vendorbridge_token', newToken);
+        localStorage.setItem('vendorbridge_user', JSON.stringify(newUser));
+        setToken(newToken);
+        setUser(newUser);
+      } else {
+        throw new Error(res.data.message || 'Signup failed');
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Signup failed';
+      throw new Error(message);
     }
   };
 
