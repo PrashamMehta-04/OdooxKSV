@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { authRouter } from "./auth/auth.routes.js";
 import { env } from "./config/env.js";
+import { dashboardRouter } from "./dashboard/dashboard.routes.js";
 import { apiRouteMap } from "./domain/api-route-map.js";
 
 export const app = express();
@@ -49,3 +50,4 @@ app.get("/api/meta/routes", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/dashboard", dashboardRouter);

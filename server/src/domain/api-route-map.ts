@@ -7,6 +7,9 @@ export const apiRouteMap = {
     me: "GET /api/auth/me",
     logout: "POST /api/auth/logout"
   },
+  dashboard: {
+    summary: "GET /api/dashboard"
+  },
   users: {
     list: "GET /api/users",
     create: "POST /api/users",

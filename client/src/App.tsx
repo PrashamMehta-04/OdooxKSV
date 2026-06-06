@@ -2,22 +2,34 @@ import {
   Activity,
   ArrowRight,
   BarChart3,
+  Bell,
+  Building2,
+  CheckCircle2,
   ClipboardList,
   FileText,
+  Home,
+  IndianRupee,
   KeyRound,
   LogIn,
   LogOut,
   Mail,
+  Menu,
+  PackageCheck,
+  Plus,
+  Search,
   ShieldCheck,
   Store,
   UserPlus,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import { FormEvent, type ReactNode, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AuthProvider, type Role, useAuth } from "./auth/auth-context";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { apiRequest } from "./lib/api";
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
@@ -33,6 +45,13 @@ const modules: Array<{
   icon: typeof Store;
   roles: Role[];
 }> = [
+  {
+    title: "Dashboard",
+    description: "Monitor procurement work, documents, alerts, and spend.",
+    path: "/",
+    icon: Home,
+    roles: ["ADMIN", "PROCUREMENT_OFFICER", "VENDOR", "MANAGER"]
+  },
   {
     title: "Vendors",
     description: "Register vendors, manage GST details, categories, contacts, and status.",
@@ -84,6 +103,55 @@ const modules: Array<{
   }
 ];
 
+interface DashboardSummaryItem {
+  label: string;
+  value: number;
+  caption: string;
+}
+
+interface DashboardDocument {
+  id: string;
+  number: string;
+  status: string;
+  total: number;
+  date: string;
+  vendorName?: string;
+  dueDate?: string;
+  purchaseOrderNumber?: string;
+}
+
+interface DashboardNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  date: string;
+}
+
+interface DashboardActivity {
+  id: string;
+  action: string;
+  message: string;
+  entityType: string;
+  actorName: string | null;
+  date: string;
+}
+
+interface MonthlySpend {
+  month: string;
+  spend: number;
+}
+
+interface DashboardData {
+  summary: DashboardSummaryItem[];
+  purchaseOrders: DashboardDocument[];
+  invoices: DashboardDocument[];
+  notifications: DashboardNotification[];
+  activity: DashboardActivity[];
+  monthlySpend: MonthlySpend[];
+}
+
 const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email."),
   password: z.string().min(1, "Enter your password.")
@@ -100,6 +168,17 @@ const forgotPasswordSchema = z.object({
   email: z.string().trim().email("Enter a valid email.")
 });
 
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0
+});
+
+const compactNumber = new Intl.NumberFormat("en-IN", {
+  notation: "compact",
+  maximumFractionDigits: 1
+});
+
 export function App() {
   return (
     <AuthProvider>
@@ -108,7 +187,7 @@ export function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<WorkspacePage />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route
             element={<ProtectedRoute roles={["ADMIN", "PROCUREMENT_OFFICER"]} />}
             path="/admin/vendors"
@@ -222,7 +301,7 @@ function LoginPage() {
         <Field label="Password" value={password} onChange={setPassword} type="password" />
         <ErrorMessage message={error} />
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
           disabled={isSubmitting}
           type="submit"
         >
@@ -306,7 +385,7 @@ function SignupPage() {
         </label>
         <ErrorMessage message={error} />
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
           disabled={isSubmitting}
           type="submit"
         >
@@ -365,7 +444,7 @@ function ForgotPasswordPage() {
           </p>
         ) : null}
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
           disabled={isSubmitting}
           type="submit"
         >
@@ -459,8 +538,9 @@ function AuthLinks({
   );
 }
 
-function WorkspacePage() {
+function AppShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow: string }) {
   const { user, logout } = useAuth();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const accessibleModules = useMemo(
     () => modules.filter((module) => user && module.roles.includes(user.role)),
     [user]
@@ -472,109 +552,534 @@ function WorkspacePage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="border-b border-border bg-card">
-        <div className="mx-auto flex min-h-24 max-w-7xl flex-col justify-center gap-4 px-6 py-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-medium text-primary">VendorBridge</p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-normal">Workspace</h1>
-            </div>
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium"
-              onClick={() => void logout()}
-              type="button"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              Sign out
-            </button>
-          </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Signed in as {user.name} with {roleLabels[user.role]} access.
-              </p>
-            </div>
-            <div className="rounded-md border border-border bg-background px-4 py-3 text-sm font-medium">
-              {user.email}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-6">
-        <nav className="flex flex-wrap gap-2">
-          {accessibleModules.map((module) => (
-            <NavLink
-              key={module.path}
-              className="rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-              to={module.path}
-            >
-              {module.title}
-            </NavLink>
-          ))}
-        </nav>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-8 md:grid-cols-2 xl:grid-cols-3">
-        {accessibleModules.map((module) => {
-          const Icon = module.icon;
-
-          return (
-            <Link key={module.title} className="rounded-md border border-border bg-card p-5" to={module.path}>
-              <div className="flex items-start gap-4">
-                <div className="rounded-md border border-border bg-secondary p-2 text-secondary-foreground">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold">{module.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {module.description}
-                  </p>
-                </div>
-                <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="flex min-h-screen">
+        <aside className="hidden w-72 shrink-0 border-r border-border bg-card lg:block">
+          <SidebarContent modules={accessibleModules} />
+        </aside>
+        {isMobileNavOpen ? (
+          <div className="fixed inset-0 z-40 bg-foreground/20 lg:hidden">
+            <div className="h-full w-72 border-r border-border bg-card">
+              <div className="flex items-center justify-between border-b border-border px-4 py-4">
+                <span className="text-sm font-semibold text-primary">VendorBridge</span>
+                <button
+                  aria-label="Close navigation"
+                  className="rounded-md border border-border p-2"
+                  onClick={() => setIsMobileNavOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
-            </Link>
-          );
-        })}
-      </section>
+              <SidebarContent modules={accessibleModules} onNavigate={() => setIsMobileNavOpen(false)} />
+            </div>
+          </div>
+        ) : null}
+        <section className="min-w-0 flex-1">
+          <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
+            <div className="flex min-h-16 items-center gap-4 px-4 md:px-6">
+              <button
+                aria-label="Open navigation"
+                className="rounded-md border border-border p-2 lg:hidden"
+                onClick={() => setIsMobileNavOpen(true)}
+                type="button"
+              >
+                <Menu className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase text-muted-foreground">{eyebrow}</p>
+                <h1 className="truncate text-xl font-semibold tracking-normal">{title}</h1>
+              </div>
+              <div className="hidden min-w-56 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground md:flex">
+                <Search className="h-4 w-4" aria-hidden="true" />
+                Search procurement records
+              </div>
+              <div className="hidden rounded-md border border-border bg-background px-3 py-2 text-sm md:block">
+                <span className="font-medium">{roleLabels[user.role]}</span>
+              </div>
+              <button
+                aria-label="Sign out"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium"
+                onClick={() => void logout()}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="ml-2 hidden sm:inline">Sign out</span>
+              </button>
+            </div>
+          </header>
+          <div className="px-4 py-6 md:px-6">{children}</div>
+        </section>
+      </div>
     </main>
   );
 }
 
-function RoleModulePage({ title, icon: Icon }: { title: string; icon: typeof Store }) {
-  const { user, logout } = useAuth();
+function SidebarContent({
+  modules: navModules,
+  onNavigate
+}: {
+  modules: typeof modules;
+  onNavigate?: () => void;
+}) {
+  const { user } = useAuth();
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-5">
-          <Link className="text-sm font-medium text-primary" to="/">
-            VendorBridge
-          </Link>
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium"
-            onClick={() => void logout()}
-            type="button"
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            Sign out
-          </button>
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border px-5 py-5">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-primary p-2 text-primary-foreground">
+            <Building2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-base font-semibold">VendorBridge</p>
+            <p className="text-xs text-muted-foreground">Procurement ERP</p>
+          </div>
         </div>
-      </header>
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="flex items-start gap-4 rounded-md border border-border bg-card p-5">
+      </div>
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {navModules.map((module) => {
+          const Icon = module.icon;
+
+          return (
+            <NavLink
+              key={module.path}
+              className={({ isActive }) =>
+                [
+                  "flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                ].join(" ")
+              }
+              end={module.path === "/"}
+              onClick={onNavigate}
+              to={module.path}
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {module.title}
+            </NavLink>
+          );
+        })}
+      </nav>
+      {user ? (
+        <div className="border-t border-border p-4">
+          <p className="truncate text-sm font-medium">{user.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DashboardPage() {
+  const { user, accessToken } = useAuth();
+  const dashboardQuery = useQuery({
+    queryKey: ["dashboard", user?.id],
+    queryFn: () =>
+      apiRequest<DashboardData>("/dashboard", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }),
+    enabled: Boolean(accessToken && user)
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const data = dashboardQuery.data;
+
+  return (
+    <AppShell title="Dashboard" eyebrow={`${roleLabels[user.role]} workspace`}>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {(data?.summary ?? fallbackSummary).map((item, index) => (
+          <MetricCard
+            key={item.label}
+            caption={item.caption}
+            icon={[ShieldCheck, ClipboardList, PackageCheck, FileText][index] ?? BarChart3}
+            isLoading={dashboardQuery.isLoading}
+            label={item.label}
+            value={item.value}
+          />
+        ))}
+      </section>
+
+      <section className="mt-6 grid gap-4 xl:grid-cols-[1.5fr_0.9fr]">
+        <div className="space-y-4">
+          <Panel
+            action={
+              <Link className="inline-flex items-center gap-2 text-sm font-medium text-primary" to={primaryAction(user.role).path}>
+                {primaryAction(user.role).title}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            }
+            title="Quick actions"
+          >
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {quickActions(user.role).map((action) => {
+                const Icon = action.icon;
+
+                return (
+                  <Link
+                    className="rounded-md border border-border bg-background p-4 transition hover:border-primary/40 hover:bg-secondary"
+                    key={action.title}
+                    to={action.path}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-md border border-border bg-card p-2">
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{action.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{action.caption}</p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </Panel>
+
+          <Panel title="Recent purchase orders">
+            <DocumentTable
+              emptyText="No purchase orders yet."
+              items={data?.purchaseOrders ?? []}
+              isLoading={dashboardQuery.isLoading}
+              type="purchase-order"
+            />
+          </Panel>
+
+          <Panel title="Recent invoices">
+            <DocumentTable
+              emptyText="No invoices yet."
+              items={data?.invoices ?? []}
+              isLoading={dashboardQuery.isLoading}
+              type="invoice"
+            />
+          </Panel>
+        </div>
+
+        <div className="space-y-4">
+          <Panel title="Monthly spend">
+            <SpendChart items={data?.monthlySpend ?? []} isLoading={dashboardQuery.isLoading} />
+          </Panel>
+
+          <Panel
+            action={
+              <button className="inline-flex items-center gap-2 text-sm font-medium text-primary" type="button">
+                <Bell className="h-4 w-4" aria-hidden="true" />
+                Notifications
+              </button>
+            }
+            title="Alerts"
+          >
+            <NotificationList items={data?.notifications ?? []} isLoading={dashboardQuery.isLoading} />
+          </Panel>
+
+          <Panel title="Activity timeline">
+            <ActivityList items={data?.activity ?? []} isLoading={dashboardQuery.isLoading} />
+          </Panel>
+        </div>
+      </section>
+
+      {dashboardQuery.isError ? (
+        <p className="mt-4 rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Dashboard data could not be loaded.
+        </p>
+      ) : null}
+    </AppShell>
+  );
+}
+
+const fallbackSummary: DashboardSummaryItem[] = [
+  { label: "Pending approvals", value: 0, caption: "Needs workflow attention" },
+  { label: "Active RFQs", value: 0, caption: "Open procurement work" },
+  { label: "Purchase orders", value: 0, caption: "Issued procurement documents" },
+  { label: "Invoices", value: 0, caption: "Generated invoice records" }
+];
+
+function MetricCard({
+  label,
+  value,
+  caption,
+  icon: Icon,
+  isLoading
+}: {
+  label: string;
+  value: number;
+  caption: string;
+  icon: typeof ShieldCheck;
+  isLoading: boolean;
+}) {
+  return (
+    <article className="rounded-md border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-normal">
+            {isLoading ? "..." : compactNumber.format(value)}
+          </p>
+        </div>
+        <div className="rounded-md border border-border bg-secondary p-2 text-secondary-foreground">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">{caption}</p>
+    </article>
+  );
+}
+
+function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="rounded-md border border-border bg-card">
+      <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border px-5 py-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {action}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function DocumentTable({
+  items,
+  isLoading,
+  emptyText,
+  type
+}: {
+  items: DashboardDocument[];
+  isLoading: boolean;
+  emptyText: string;
+  type: "purchase-order" | "invoice";
+}) {
+  if (isLoading) {
+    return <SkeletonRows />;
+  }
+
+  if (!items.length) {
+    return <EmptyState text={emptyText} />;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-md border border-border">
+      <table className="w-full min-w-[620px] text-left text-sm">
+        <thead className="bg-secondary text-xs uppercase text-muted-foreground">
+          <tr>
+            <th className="px-4 py-3 font-medium">Document</th>
+            <th className="px-4 py-3 font-medium">{type === "purchase-order" ? "Vendor" : "PO"}</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3 text-right font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border bg-card">
+          {items.map((item) => (
+            <tr key={item.id}>
+              <td className="px-4 py-3">
+                <p className="font-medium">{item.number}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {type === "purchase-order" ? item.vendorName : item.purchaseOrderNumber}
+              </td>
+              <td className="px-4 py-3">
+                <StatusBadge status={item.status} />
+              </td>
+              <td className="px-4 py-3 text-right font-medium">{currency.format(item.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SpendChart({ items, isLoading }: { items: MonthlySpend[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <SkeletonRows />;
+  }
+
+  if (!items.length) {
+    return <EmptyState text="No spend data yet." />;
+  }
+
+  const maxSpend = Math.max(...items.map((item) => item.spend), 1);
+
+  return (
+    <div className="space-y-4">
+      {items.map((item) => (
+        <div className="grid grid-cols-[3rem_1fr_5rem] items-center gap-3 text-sm" key={item.month}>
+          <span className="text-muted-foreground">{item.month}</span>
+          <div className="h-3 overflow-hidden rounded-sm bg-secondary">
+            <div
+              className="h-full rounded-sm bg-primary"
+              style={{ width: `${Math.max((item.spend / maxSpend) * 100, 8)}%` }}
+            />
+          </div>
+          <span className="text-right font-medium">{currency.format(item.spend)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NotificationList({
+  items,
+  isLoading
+}: {
+  items: DashboardNotification[];
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return <SkeletonRows />;
+  }
+
+  if (!items.length) {
+    return <EmptyState text="No alerts for this role." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div className="rounded-md border border-border bg-background p-3" key={item.id}>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 rounded-md border border-border bg-card p-1.5">
+              <Bell className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{item.title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.message}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{formatDate(item.date)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ActivityList({ items, isLoading }: { items: DashboardActivity[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <SkeletonRows />;
+  }
+
+  if (!items.length) {
+    return <EmptyState text="No activity yet." />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div className="flex gap-3" key={item.id}>
+          <div className="mt-1 h-2 w-2 rounded-full bg-accent" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{item.message}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {item.actorName ?? "System"} · {formatDate(item.date)}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const normalized = status.replaceAll("_", " ").toLowerCase();
+  const isPositive = ["APPROVED", "ISSUED", "SENT", "PAID", "FULFILLED", "ACKNOWLEDGED"].includes(status);
+
+  return (
+    <span
+      className={[
+        "inline-flex min-h-7 items-center rounded-md border px-2 py-1 text-xs font-medium capitalize",
+        isPositive
+          ? "border-primary/25 bg-primary/10 text-primary"
+          : "border-accent/30 bg-accent/10 text-foreground"
+      ].join(" ")}
+    >
+      {normalized}
+    </span>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-background px-4 py-6 text-center text-sm text-muted-foreground">
+      {text}
+    </div>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((item) => (
+        <div className="h-12 rounded-md bg-secondary" key={item} />
+      ))}
+    </div>
+  );
+}
+
+function RoleModulePage({ title, icon: Icon }: { title: string; icon: typeof Store }) {
+  return (
+    <AppShell title={title} eyebrow="Module">
+      <section className="rounded-md border border-border bg-card p-6">
+        <div className="flex items-start gap-4">
           <div className="rounded-md border border-border bg-secondary p-2 text-secondary-foreground">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{user ? roleLabels[user.role] : ""}</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-normal">{title}</h1>
+            <h2 className="text-xl font-semibold tracking-normal">{title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              This route is protected and ready for the next workflow step.
+              This protected workflow is ready for the next implementation step.
             </p>
           </div>
         </div>
       </section>
-    </main>
+    </AppShell>
   );
+}
+
+function quickActions(role: Role) {
+  if (role === "ADMIN") {
+    return [
+      { title: "Review vendors", caption: "Manage vendor status", path: "/admin/vendors", icon: Store },
+      { title: "Open reports", caption: "Track procurement spend", path: "/reports", icon: BarChart3 },
+      { title: "Audit activity", caption: "Monitor workflow events", path: "/activity", icon: Activity }
+    ];
+  }
+
+  if (role === "PROCUREMENT_OFFICER") {
+    return [
+      { title: "Create RFQ", caption: "Start a procurement request", path: "/procurement/rfqs", icon: Plus },
+      { title: "Compare quotes", caption: "Move selected vendors forward", path: "/procurement/rfqs", icon: CheckCircle2 },
+      { title: "Generate invoice", caption: "Prepare billing documents", path: "/procurement/invoices", icon: FileText }
+    ];
+  }
+
+  if (role === "MANAGER") {
+    return [
+      { title: "Review approvals", caption: "Approve or reject requests", path: "/approvals", icon: ShieldCheck },
+      { title: "Check activity", caption: "See recent procurement updates", path: "/activity", icon: Activity },
+      { title: "View RFQ status", caption: "Monitor active workflows", path: "/", icon: ClipboardList }
+    ];
+  }
+
+  return [
+    { title: "View RFQs", caption: "Open assigned requests", path: "/vendor/rfqs", icon: ClipboardList },
+    { title: "Submit quotation", caption: "Respond to procurement teams", path: "/vendor/rfqs", icon: IndianRupee },
+    { title: "Track orders", caption: "Follow issued purchase orders", path: "/", icon: PackageCheck }
+  ];
+}
+
+function primaryAction(role: Role) {
+  return quickActions(role)[0];
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(new Date(value));
 }
