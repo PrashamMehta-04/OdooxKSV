@@ -42,10 +42,11 @@ type RFQCreateRequest struct {
 }
 
 type RFQFilters struct {
-	Status string
-	Search string
-	Limit  int
-	Offset int
+	Status   string
+	Search   string
+	VendorID string
+	Limit    int
+	Offset   int
 }
 
 func (s *Store) CreateRFQ(ctx context.Context, req RFQCreateRequest, actorID string) (domain.RFQ, error) {
@@ -116,30 +117,42 @@ func (s *Store) GetRFQ(ctx context.Context, id string) (domain.RFQ, []domain.RFQ
 
 func (s *Store) ListRFQs(ctx context.Context, filters RFQFilters) ([]domain.RFQ, error) {
 	query := `
-		SELECT id::text, title, COALESCE(description, ''), COALESCE(category, ''), deadline, status, COALESCE(created_by::text, ''), created_at, updated_at
-		FROM rfqs
-		WHERE deleted_at IS NULL
+		SELECT r.id::text, r.title, COALESCE(r.description, ''), COALESCE(r.category, ''), r.deadline, r.status, COALESCE(r.created_by::text, ''), r.created_at, r.updated_at
+		FROM rfqs r
 	`
-	args := make([]any, 0, 4)
-	idx := 1
+	args := make([]any, 0, 5)
+	where := []string{"r.deleted_at IS NULL"}
+
+	if filters.VendorID != "" {
+		query += " INNER JOIN rfq_vendor_assignments a ON a.rfq_id = r.id"
+		where = append(where, fmt.Sprintf("a.vendor_id = $%d::uuid", len(args)+1))
+		args = append(args, filters.VendorID)
+	}
+
 	if filters.Search != "" {
-		query += fmt.Sprintf(" AND (LOWER(title) LIKE LOWER($%d) OR LOWER(COALESCE(description, '')) LIKE LOWER($%d) OR LOWER(COALESCE(category, '')) LIKE LOWER($%d))", idx, idx, idx)
+		idx := len(args) + 1
+		where = append(where, fmt.Sprintf("(LOWER(r.title) LIKE LOWER($%d) OR LOWER(COALESCE(r.description, '')) LIKE LOWER($%d) OR LOWER(COALESCE(r.category, '')) LIKE LOWER($%d))", idx, idx, idx))
 		args = append(args, "%"+strings.TrimSpace(filters.Search)+"%")
-		idx++
 	}
+
 	if filters.Status != "" {
-		query += fmt.Sprintf(" AND status = $%d", idx)
+		where = append(where, fmt.Sprintf("r.status = $%d", len(args)+1))
 		args = append(args, filters.Status)
-		idx++
 	}
-	query += " ORDER BY created_at DESC"
+
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+
+	query += " ORDER BY r.created_at DESC"
+
 	if filters.Limit > 0 {
-		query += fmt.Sprintf(" LIMIT $%d", idx)
+		query += fmt.Sprintf(" LIMIT $%d", len(args)+1)
 		args = append(args, filters.Limit)
-		idx++
 	}
+
 	if filters.Offset > 0 {
-		query += fmt.Sprintf(" OFFSET $%d", idx)
+		query += fmt.Sprintf(" OFFSET $%d", len(args)+1)
 		args = append(args, filters.Offset)
 	}
 

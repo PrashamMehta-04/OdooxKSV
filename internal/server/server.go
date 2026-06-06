@@ -460,12 +460,24 @@ func (s *Server) handleDeleteVendor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListRFQs(w http.ResponseWriter, r *http.Request, ac authContext) {
-	rfqs, err := s.store.ListRFQs(r.Context(), store.RFQFilters{
+	filters := store.RFQFilters{
 		Search: r.URL.Query().Get("search"),
 		Status: r.URL.Query().Get("status"),
 		Limit:  parseIntQuery(r, "limit", 50),
 		Offset: parseIntQuery(r, "offset", 0),
-	})
+	}
+
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				filters.VendorID = vendor.ID
+			}
+		}
+	}
+
+	rfqs, err := s.store.ListRFQs(r.Context(), filters)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -602,12 +614,24 @@ func (s *Server) handleCreateQuotation(w http.ResponseWriter, r *http.Request, a
 }
 
 func (s *Server) handleListQuotations(w http.ResponseWriter, r *http.Request, ac authContext) {
-	quotations, err := s.store.ListQuotations(r.Context(), store.QuotationFilters{
+	filters := store.QuotationFilters{
 		RFQID:  r.URL.Query().Get("rfq_id"),
 		Status: r.URL.Query().Get("status"),
 		Limit:  parseIntQuery(r, "limit", 50),
 		Offset: parseIntQuery(r, "offset", 0),
-	})
+	}
+
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				filters.VendorID = vendor.ID
+			}
+		}
+	}
+
+	quotations, err := s.store.ListQuotations(r.Context(), filters)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -688,7 +712,21 @@ func (s *Server) handleDecideApproval(w http.ResponseWriter, r *http.Request, ac
 }
 
 func (s *Server) handleListPurchaseOrders(w http.ResponseWriter, r *http.Request, ac authContext) {
-	items, err := s.store.ListPurchaseOrders(r.Context(), parseIntQuery(r, "limit", 50), parseIntQuery(r, "offset", 0))
+	limit := parseIntQuery(r, "limit", 50)
+	offset := parseIntQuery(r, "offset", 0)
+	var vendorID string
+
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				vendorID = vendor.ID
+			}
+		}
+	}
+
+	items, err := s.store.ListPurchaseOrders(r.Context(), vendorID, limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -707,7 +745,21 @@ func (s *Server) handleGetPurchaseOrder(w http.ResponseWriter, r *http.Request, 
 }
 
 func (s *Server) handleListInvoices(w http.ResponseWriter, r *http.Request, ac authContext) {
-	items, err := s.store.ListInvoices(r.Context(), parseIntQuery(r, "limit", 50), parseIntQuery(r, "offset", 0))
+	limit := parseIntQuery(r, "limit", 50)
+	offset := parseIntQuery(r, "offset", 0)
+	var vendorID string
+
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				vendorID = vendor.ID
+			}
+		}
+	}
+
+	items, err := s.store.ListInvoices(r.Context(), vendorID, limit, offset)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -4,46 +4,131 @@ import { SectionCard } from '../components/SectionCard';
 import { Badge } from '../components/Badge';
 import { apiFetch } from '../lib/api';
 import { formatCurrency, formatDate, statusTone } from '../lib/format';
-import type { PurchaseOrder } from '../lib/types';
+import type { PurchaseOrder, QuotationLineItem } from '../lib/types';
 
 export function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
+  const [selectedPo, setSelectedPo] = useState<PurchaseOrder | null>(null);
+  const [items, setItems] = useState<QuotationLineItem[]>([]);
 
   useEffect(() => {
     void apiFetch<PurchaseOrder[]>('/purchase-orders').then(setPos);
   }, []);
 
+  async function viewPo(po: PurchaseOrder) {
+    const data = await apiFetch<{ purchase_order: PurchaseOrder; items: QuotationLineItem[] }>(`/purchase-orders/${po.id}`);
+    setSelectedPo(data.purchase_order);
+    setItems(data.items);
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
   return (
     <>
-      <PageHeader eyebrow="PO & invoice" title="Purchase orders" description="Approved procurement converted into PO records." />
-      <SectionCard title="Purchase orders" subtitle="Auto-generated after final approval.">
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>PO #</th>
-                <th>Status</th>
-                <th>Subtotal</th>
-                <th>GST</th>
-                <th>Grand total</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
+      <div className="no-print">
+        <PageHeader eyebrow="PO & Invoice" title="Purchase orders" description="Approved procurement converted into PO records." />
+        <div className="two-col two-col--wide">
+          <SectionCard title="Purchase orders" subtitle="Select an order to view the document.">
+            <div className="stack-list">
               {pos.map((po) => (
-                <tr key={po.id}>
-                  <td><strong>{po.po_number}</strong></td>
-                  <td><Badge tone={statusTone(po.status)}>{po.status}</Badge></td>
-                  <td>{formatCurrency(po.subtotal)}</td>
-                  <td>{formatCurrency(po.gst_amount)}</td>
-                  <td>{formatCurrency(po.grand_total)}</td>
-                  <td>{formatDate(po.po_date)}</td>
-                </tr>
+                <button
+                  key={po.id}
+                  type="button"
+                  className={`stack-list__item stack-list__button ${selectedPo?.id === po.id ? 'stack-list__button--active' : ''}`}
+                  onClick={() => viewPo(po)}
+                >
+                  <div>
+                    <strong>{po.po_number}</strong>
+                    <p>{formatDate(po.po_date)} · Total {formatCurrency(po.grand_total)}</p>
+                  </div>
+                  <Badge tone={statusTone(po.status)}>{po.status}</Badge>
+                </button>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="PO Document" subtitle="Stylized view for review or printing.">
+            {selectedPo ? (
+              <div className="document-actions">
+                <button className="button button--ghost" onClick={handlePrint}>Print PO</button>
+              </div>
+            ) : (
+              <div className="empty-state">Select a PO from the list to view.</div>
+            )}
+          </SectionCard>
         </div>
-      </SectionCard>
+      </div>
+
+      {selectedPo && (
+        <div className="print-only-container">
+          <div className="document-sheet">
+            <div className="document-header">
+              <div className="document-brand">
+                <div className="brand-mark">VB</div>
+                <strong>VendorBridge</strong>
+              </div>
+              <div className="document-title">
+                <h1>PURCHASE ORDER</h1>
+                <span>#{selectedPo.po_number}</span>
+              </div>
+            </div>
+
+            <div className="document-meta">
+              <div className="meta-box">
+                <label>Date</label>
+                <strong>{formatDate(selectedPo.po_date)}</strong>
+              </div>
+              <div className="meta-box">
+                <label>Status</label>
+                <strong>{selectedPo.status.toUpperCase()}</strong>
+              </div>
+            </div>
+
+            <table className="document-table">
+              <thead>
+                <tr>
+                  <th>Item Description</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.item_name}</td>
+                    <td>{item.quantity}</td>
+                    <td>{formatCurrency(item.unit_price)}</td>
+                    <td>{formatCurrency(item.total_amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="document-totals">
+              <div className="total-row">
+                <span>Subtotal</span>
+                <strong>{formatCurrency(selectedPo.subtotal)}</strong>
+              </div>
+              <div className="total-row">
+                <span>Tax (GST)</span>
+                <strong>{formatCurrency(selectedPo.gst_amount)}</strong>
+              </div>
+              <div className="total-row total-row--grand">
+                <span>Grand Total</span>
+                <strong>{formatCurrency(selectedPo.grand_total)}</strong>
+              </div>
+            </div>
+
+            <div className="document-footer">
+              <p>Authorized Signature _______________________</p>
+              <p className="muted">Generated by VendorBridge ERP</p>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

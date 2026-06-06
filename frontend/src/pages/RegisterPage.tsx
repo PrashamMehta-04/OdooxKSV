@@ -33,20 +33,18 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="auth-layout auth-layout--register">
-      <section className="auth-hero auth-hero--compact">
-        <p className="eyebrow">VendorBridge onboarding</p>
-        <h1>Register the procurement team and start tracking workflows.</h1>
-        <p>The role determines what each user can create, approve, and inspect.</p>
-      </section>
+    <div className="auth-layout--simple">
+      <div className="centered-container" style={{ maxWidth: '800px' }}>
+        <div className="logo-large">
+          <div className="brand-mark">VB</div>
+          <h1>VendorBridge Registration</h1>
+        </div>
 
-      <section className="auth-card auth-card--wide">
-        <h2>Create account</h2>
         <form className="form-grid" onSubmit={onSubmit}>
           <TextField label="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
-          <TextField label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <TextField label="Email Address" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <TextField label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <SelectField label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+          <SelectField label="Role (Admin, officer)" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             <option value="admin">Admin</option>
             <option value="officer">Officer</option>
             <option value="procurement_head">Procurement Head</option>
@@ -54,18 +52,23 @@ export function RegisterPage() {
             <option value="vendor">Vendor</option>
           </SelectField>
           <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-          <TextField label="Phone number" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} />
+          <TextField label="Phone Number" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} />
           <TextField label="Photo URL" value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} />
-          <TextField label="Additional info" value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} />
+          <div className="full-width">
+            <TextField label="Additional Information ...." value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} />
+          </div>
+          
           {error ? <div className="form-error form-error--full">{error}</div> : null}
-          <button className="button button--primary button--wide form-grid__submit" type="submit" disabled={loading}>
-            {loading ? 'Creating…' : 'Create account'}
+          
+          <button className="button button--primary form-grid__submit" type="submit" disabled={loading}>
+            {loading ? 'Creating...' : 'Register'}
           </button>
         </form>
-        <button className="button button--ghost button--wide" type="button" onClick={() => navigate('login')}>
-          Back to login
+
+        <button className="button button--ghost" type="button" onClick={() => navigate('login')}>
+          Already have an account? Login
         </button>
-      </section>
+      </div>
     </div>
   );
 }

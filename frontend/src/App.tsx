@@ -13,6 +13,7 @@ import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { VendorSubmissionsPage } from './pages/VendorSubmissionsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function AppContent() {
@@ -57,6 +58,8 @@ function AppContent() {
         return <ActivityPage />;
       case 'reports':
         return <ReportsPage />;
+      case 'vendor-submissions':
+        return <VendorSubmissionsPage />;
       case 'login':
       case 'register':
         return null;

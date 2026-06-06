@@ -100,6 +100,15 @@ func (s *Store) GetVendor(ctx context.Context, id string) (domain.Vendor, error)
 	return scanVendor(row)
 }
 
+func (s *Store) GetVendorByEmail(ctx context.Context, email string) (domain.Vendor, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id::text, name, COALESCE(gst_number, ''), COALESCE(category, ''), COALESCE(contact_number, ''), COALESCE(email, ''), COALESCE(country, ''), status, COALESCE(notes, ''), created_at, updated_at
+		FROM vendors
+		WHERE email = $1 AND deleted_at IS NULL
+	`, email)
+	return scanVendor(row)
+}
+
 func (s *Store) ListVendors(ctx context.Context, filters VendorFilters) ([]domain.Vendor, error) {
 	query := `
 		SELECT id::text, name, COALESCE(gst_number, ''), COALESCE(category, ''), COALESCE(contact_number, ''), COALESCE(email, ''), COALESCE(country, ''), status, COALESCE(notes, ''), created_at, updated_at

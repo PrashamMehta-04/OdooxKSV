@@ -29,10 +29,11 @@ type CreateQuotationRequest struct {
 }
 
 type QuotationFilters struct {
-	RFQID  string
-	Status string
-	Limit  int
-	Offset int
+	RFQID    string
+	VendorID string
+	Status   string
+	Limit    int
+	Offset   int
 }
 
 func (s *Store) CreateQuotation(ctx context.Context, req CreateQuotationRequest, actorID string) (domain.Quotation, error) {
@@ -61,13 +62,18 @@ func (s *Store) ListQuotations(ctx context.Context, filters QuotationFilters) ([
 	query := `
 		SELECT id::text, rfq_id::text, vendor_id::text, total_amount, COALESCE(delivery_days, 0), COALESCE(rating, 0), COALESCE(payment_terms, ''), COALESCE(gst_percent, 0), status, selected, created_at, updated_at
 		FROM quotations
-		WHERE 1=1
+		WHERE deleted_at IS NULL
 	`
-	args := make([]any, 0, 4)
+	args := make([]any, 0, 5)
 	idx := 1
 	if filters.RFQID != "" {
 		query += fmt.Sprintf(" AND rfq_id = $%d::uuid", idx)
 		args = append(args, filters.RFQID)
+		idx++
+	}
+	if filters.VendorID != "" {
+		query += fmt.Sprintf(" AND vendor_id = $%d::uuid", idx)
+		args = append(args, filters.VendorID)
 		idx++
 	}
 	if filters.Status != "" {

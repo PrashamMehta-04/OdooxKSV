@@ -1,4 +1,3 @@
-import { formatDateTime } from '../lib/format';
 import type { AuthUser } from '../lib/types';
 
 export function Topbar({
@@ -10,18 +9,23 @@ export function Topbar({
 }) {
   return (
     <header className="topbar">
-      <div>
-        <p className="eyebrow">VendorBridge live workspace</p>
-        <h2>Welcome back, {user.full_name}</h2>
-        <p className="topbar__meta">
-          {user.role} · {user.email} · Updated {formatDateTime(user.updated_at)}
-        </p>
+      <div className="sidebar__brand" style={{ border: 'none', padding: 0, margin: 0 }}>
+        <div className="brand-mark">VB</div>
+        <div>
+          <div className="brand-title" style={{ color: 'var(--text)' }}>VendorBridge</div>
+          <div className="brand-subtitle" style={{ color: 'var(--muted)' }}>ERP workspace</div>
+        </div>
       </div>
+      
       <div className="topbar__actions">
-        <button className="button button--ghost" type="button" onClick={() => window.location.reload()}>
-          Refresh
-        </button>
-        <button className="button button--primary" type="button" onClick={onLogout}>
+        <div className="user-profile">
+          <div className="user-avatar">{user.full_name.charAt(0)}</div>
+          <div className="user-info">
+            <span className="user-name">{user.full_name}</span>
+            <span className="user-role">{user.role}</span>
+          </div>
+        </div>
+        <button className="button button--ghost" type="button" onClick={onLogout}>
           Logout
         </button>
       </div>

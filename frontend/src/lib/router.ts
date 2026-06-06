@@ -11,7 +11,8 @@ export type RouteKey =
   | 'purchase-orders'
   | 'invoices'
   | 'activity'
-  | 'reports';
+  | 'reports'
+  | 'vendor-submissions';
 
 export function getRoute(): RouteKey {
   const raw = window.location.hash.replace(/^#\/?/, '');
@@ -60,6 +61,8 @@ function normalizeRoute(raw: string): RouteKey {
       return 'activity';
     case 'reports':
       return 'reports';
+    case 'vendor-submissions':
+      return 'vendor-submissions';
     default:
       return 'dashboard';
   }

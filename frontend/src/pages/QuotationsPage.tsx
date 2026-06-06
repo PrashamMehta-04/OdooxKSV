@@ -1,81 +1,116 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
-import { SectionCard } from '../components/SectionCard';
 import { Badge } from '../components/Badge';
 import { apiFetch } from '../lib/api';
-import { formatCurrency, formatDateTime, statusTone } from '../lib/format';
+import { formatCurrency, formatDateTime } from '../lib/format';
 import type { Quotation, Vendor, RFQ } from '../lib/types';
 
-type QuoteRow = Quotation & { vendor_name?: string; rfq_title?: string };
-
 export function QuotationsPage() {
-  const [quotations, setQuotations] = useState<QuoteRow[]>([]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [rfqs, setRfqs] = useState<RFQ[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [selectedRfqId, setSelectedRfqId] = useState<string>('');
+
+  async function load() {
+    const [q, r, v] = await Promise.all([
+      apiFetch<Quotation[]>('/quotations'),
+      apiFetch<RFQ[]>('/rfqs'),
+      apiFetch<Vendor[]>('/vendors'),
+    ]);
+    setQuotations(q);
+    setRfqs(r);
+    setVendors(v);
+  }
 
   useEffect(() => {
-    void (async () => {
-      const [q, r, v] = await Promise.all([
-        apiFetch<Quotation[]>('/quotations'),
-        apiFetch<RFQ[]>('/rfqs'),
-        apiFetch<Vendor[]>('/vendors'),
-      ]);
-      setQuotations(q as QuoteRow[]);
-      setRfqs(r);
-      setVendors(v);
-    })();
+    void load();
   }, []);
 
-  const selected = quotations.find((item) => item.selected);
+  const filteredQuotes = quotations.filter(q => q.rfq_id === selectedRfqId);
+  const minPrice = filteredQuotes.length ? Math.min(...filteredQuotes.map(q => q.total_amount)) : 0;
+  const minDelivery = filteredQuotes.length ? Math.min(...filteredQuotes.map(q => q.delivery_days || 999)) : 0;
+
+  async function selectWinner(id: string) {
+    await apiFetch(`/quotations/${id}/select`, { method: 'POST' });
+    await load();
+  }
 
   return (
     <>
-      <PageHeader eyebrow="Quotations Comparison" title="Compare vendor offers" description="Price, delivery, rating, payment terms, GST, and selection state." />
-      <div className="two-col two-col--wide">
-        <SectionCard title="Quotation summary" subtitle="Winner selection is highlighted.">
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>RFQ</th>
-                  <th>Vendor</th>
-                  <th>Total</th>
-                  <th>Delivery</th>
-                  <th>Rating</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotations.map((quotation) => (
-                  <tr key={quotation.id} className={quotation.selected ? 'row-highlight' : ''}>
-                    <td>{rfqs.find((rfq) => rfq.id === quotation.rfq_id)?.title || quotation.rfq_id}</td>
-                    <td>{vendors.find((vendor) => vendor.id === quotation.vendor_id)?.name || quotation.vendor_id}</td>
-                    <td>{formatCurrency(quotation.total_amount)}</td>
-                    <td>{quotation.delivery_days ?? '—'} days</td>
-                    <td>{quotation.rating ? `${quotation.rating.toFixed(1)}/5` : '—'}</td>
-                    <td><Badge tone={statusTone(quotation.status)}>{quotation.selected ? 'selected' : quotation.status}</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Comparison notes" subtitle="Useful when reviewing vendor quotes in the procurement head office.">
-          {selected ? (
-            <div className="quote-panel">
-              <div className="quote-panel__hero">
-                <strong>{vendors.find((vendor) => vendor.id === selected.vendor_id)?.name || selected.vendor_id}</strong>
-                <Badge tone="success">Winning quote</Badge>
-              </div>
-              <p>Total {formatCurrency(selected.total_amount)} · Delivery {selected.delivery_days ?? '—'} days · Payment {selected.payment_terms || 'N/A'}</p>
-              <p>Updated {formatDateTime(selected.updated_at)}</p>
-            </div>
-          ) : (
-            <div className="empty-state">No selected quotation yet.</div>
-          )}
-        </SectionCard>
+      <PageHeader eyebrow="Quotations Comparison" title="Compare vendor offers" description="Side-by-side analysis of price, delivery, and terms to select the best vendor." />
+      
+      <div className="section-toolbar">
+        <div className="filter-group">
+          <label className="filter-label">Select RFQ to compare:</label>
+          <select className="input-inline" value={selectedRfqId} onChange={(e) => setSelectedRfqId(e.target.value)}>
+            <option value="">-- Choose RFQ --</option>
+            {rfqs.map(rfq => (
+              <option key={rfq.id} value={rfq.id}>{rfq.title} ({rfq.status})</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {selectedRfqId ? (
+        <div className="comparison-grid">
+          {filteredQuotes.length > 0 ? (
+            filteredQuotes.map((q) => {
+              const vendor = vendors.find(v => v.id === q.vendor_id);
+              const isLowestPrice = q.total_amount === minPrice;
+              const isBestDelivery = q.delivery_days === minDelivery;
+
+              return (
+                <div key={q.id} className={`comparison-card ${q.selected ? 'comparison-card--selected' : ''}`}>
+                  <div className="comparison-card__header">
+                    <strong>{vendor?.name || 'Unknown Vendor'}</strong>
+                    {q.selected && <Badge tone="success">Winner</Badge>}
+                  </div>
+                  
+                  <div className="comparison-card__body">
+                    <div className="comparison-stat">
+                      <label>Total Amount</label>
+                      <div className={`comparison-stat__value ${isLowestPrice ? 'text-success' : ''}`}>
+                        {formatCurrency(q.total_amount)}
+                        {isLowestPrice && <span className="mini-badge">Lowest</span>}
+                      </div>
+                    </div>
+
+                    <div className="comparison-stat">
+                      <label>Delivery</label>
+                      <div className={`comparison-stat__value ${isBestDelivery ? 'text-info' : ''}`}>
+                        {q.delivery_days} days
+                        {isBestDelivery && <span className="mini-badge mini-badge--info">Fastest</span>}
+                      </div>
+                    </div>
+
+                    <div className="comparison-stat">
+                      <label>Payment Terms</label>
+                      <p>{q.payment_terms || 'Standard'}</p>
+                    </div>
+
+                    <div className="comparison-stat">
+                      <label>Rating</label>
+                      <p>{q.rating ? `${q.rating.toFixed(1)}/5` : 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="comparison-card__footer">
+                    {!q.selected && q.status !== 'rejected' && (
+                      <button className="button button--primary full-width" onClick={() => selectWinner(q.id)}>Select as Winner</button>
+                    )}
+                    {q.status === 'rejected' && <Badge tone="danger">Rejected</Badge>}
+                    <div className="muted small mt-2">Submitted {formatDateTime(q.created_at)}</div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="empty-state full-width">No quotations submitted for this RFQ yet.</div>
+          )}
+        </div>
+      ) : (
+        <div className="empty-state">Please select an RFQ from the dropdown above to compare vendor quotes.</div>
+      )}
     </>
   );
 }

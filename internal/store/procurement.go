@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"vendorbridge/internal/domain"
@@ -136,23 +137,27 @@ func insertInvoiceLineItems(ctx context.Context, tx *sql.Tx, invoiceID string, i
 	return nil
 }
 
-func (s *Store) ListPurchaseOrders(ctx context.Context, limit, offset int) ([]domain.PurchaseOrder, error) {
+func (s *Store) ListPurchaseOrders(ctx context.Context, vendorID string, limit, offset int) ([]domain.PurchaseOrder, error) {
 	query := `
 		SELECT id::text, po_number, COALESCE(rfq_id::text, ''), COALESCE(quotation_id::text, ''), COALESCE(vendor_id::text, ''), status, subtotal, gst_amount, grand_total, po_date, created_at, updated_at
 		FROM purchase_orders
 		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
 	`
 	args := []any{}
+	idx := 1
+	if vendorID != "" {
+		query += fmt.Sprintf(" AND vendor_id = $%d::uuid", idx)
+		args = append(args, vendorID)
+		idx++
+	}
+	query += " ORDER BY created_at DESC"
 	if limit > 0 {
-		query += " LIMIT $1"
+		query += fmt.Sprintf(" LIMIT $%d", idx)
 		args = append(args, limit)
-		if offset > 0 {
-			query += " OFFSET $2"
-			args = append(args, offset)
-		}
-	} else if offset > 0 {
-		query += " OFFSET $1"
+		idx++
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", idx)
 		args = append(args, offset)
 	}
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -216,23 +221,27 @@ func (s *Store) listPOLineItems(ctx context.Context, poID string) ([]domain.Quot
 	return items, rows.Err()
 }
 
-func (s *Store) ListInvoices(ctx context.Context, limit, offset int) ([]domain.Invoice, error) {
+func (s *Store) ListInvoices(ctx context.Context, vendorID string, limit, offset int) ([]domain.Invoice, error) {
 	query := `
 		SELECT id::text, invoice_number, po_id::text, COALESCE(vendor_id::text, ''), invoice_date, due_date, subtotal, gst_amount, grand_total, status, created_at, updated_at
 		FROM invoices
 		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
 	`
 	args := []any{}
+	idx := 1
+	if vendorID != "" {
+		query += fmt.Sprintf(" AND vendor_id = $%d::uuid", idx)
+		args = append(args, vendorID)
+		idx++
+	}
+	query += " ORDER BY created_at DESC"
 	if limit > 0 {
-		query += " LIMIT $1"
+		query += fmt.Sprintf(" LIMIT $%d", idx)
 		args = append(args, limit)
-		if offset > 0 {
-			query += " OFFSET $2"
-			args = append(args, offset)
-		}
-	} else if offset > 0 {
-		query += " OFFSET $1"
+		idx++
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", idx)
 		args = append(args, offset)
 	}
 	rows, err := s.db.QueryContext(ctx, query, args...)
