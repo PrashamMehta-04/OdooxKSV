@@ -31,6 +31,8 @@ import { AuthProvider, type Role, useAuth } from "./auth/auth-context";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { apiRequest } from "./lib/api";
 
+import { VendorsPage } from "./features/vendors/VendorsPage";
+
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
   PROCUREMENT_OFFICER: "Procurement Officer",
@@ -192,7 +194,7 @@ export function App() {
             element={<ProtectedRoute roles={["ADMIN", "PROCUREMENT_OFFICER"]} />}
             path="/admin/vendors"
           >
-            <Route index element={<RoleModulePage title="Vendors" icon={Store} />} />
+            <Route index element={<VendorsPage />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["PROCUREMENT_OFFICER"]} />}
@@ -538,7 +540,7 @@ function AuthLinks({
   );
 }
 
-function AppShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow: string }) {
+export function AppShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow: string }) {
   const { user, logout } = useAuth();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const accessibleModules = useMemo(
@@ -984,9 +986,9 @@ function ActivityList({ items, isLoading }: { items: DashboardActivity[]; isLoad
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status }: { status: string }) {
   const normalized = status.replaceAll("_", " ").toLowerCase();
-  const isPositive = ["APPROVED", "ISSUED", "SENT", "PAID", "FULFILLED", "ACKNOWLEDGED"].includes(status);
+  const isPositive = ["APPROVED", "ISSUED", "SENT", "PAID", "FULFILLED", "ACKNOWLEDGED", "ACTIVE"].includes(status);
 
   return (
     <span
@@ -1076,7 +1078,7 @@ function primaryAction(role: Role) {
   return quickActions(role)[0];
 }
 
-function formatDate(value: string) {
+export function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",

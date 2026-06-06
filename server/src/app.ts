@@ -8,6 +8,8 @@ import { env } from "./config/env.js";
 import { dashboardRouter } from "./dashboard/dashboard.routes.js";
 import { apiRouteMap } from "./domain/api-route-map.js";
 
+import { vendorsRouter } from "./vendors/vendors.routes.js";
+
 export const app = express();
 
 function isAllowedOrigin(origin: string) {
@@ -51,3 +53,4 @@ app.get("/api/meta/routes", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/vendors", vendorsRouter);
