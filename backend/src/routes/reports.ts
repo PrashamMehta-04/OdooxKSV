@@ -149,9 +149,9 @@ router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
   try {
     // Fetch last 12 months of POs and invoices
     const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
-    twelveMonthsAgo.setDate(1);
-    twelveMonthsAgo.setHours(0, 0, 0, 0);
+    twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
+    twelveMonthsAgo.setUTCDate(1);
+    twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
 
     const [pos, invoices] = await Promise.all([
       prisma.purchaseOrder.findMany({
@@ -168,14 +168,15 @@ router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
     const months: Record<string, { month: string; poCount: number; poTotal: number; invoiceCount: number; invoiceTotal: number }> = {};
     for (let i = 11; i >= 0; i--) {
       const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() - i);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
       months[key] = { month: key, poCount: 0, poTotal: 0, invoiceCount: 0, invoiceTotal: 0 };
     }
 
     for (const po of pos) {
       const d = new Date(po.createdAt);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
       if (months[key]) {
         months[key].poCount += 1;
         months[key].poTotal += po.totalAmount;
@@ -184,7 +185,7 @@ router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
 
     for (const inv of invoices) {
       const d = new Date(inv.createdAt);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
       if (months[key]) {
         months[key].invoiceCount += 1;
         months[key].invoiceTotal += inv.totalAmount;
@@ -192,9 +193,10 @@ router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
     }
 
     const trends = Object.values(months).map((m) => ({
-      ...m,
-      poTotal: parseFloat(m.poTotal.toFixed(2)),
-      invoiceTotal: parseFloat(m.invoiceTotal.toFixed(2)),
+      month: m.month,
+      purchaseOrders: m.poCount,
+      invoices: m.invoiceCount,
+      spend: parseFloat(m.invoiceTotal.toFixed(2)),
     }));
 
     return res.json({ success: true, data: trends });

@@ -82,10 +82,10 @@ const ApprovalDetail: React.FC = () => {
   if (isLoading) return <div className="flex items-center justify-center h-64"><LoadingSpinner size="lg" /></div>;
   if (!approval) return null;
 
-  const q = typeof approval.quotationId === 'object' ? approval.quotationId as Quotation : null;
-  const vendor = q && typeof q.vendorId === 'object' ? q.vendorId as Vendor : null;
-  const requestedBy = typeof approval.requestedBy === 'object' ? approval.requestedBy as User : null;
-  const approvedBy = approval.approvedBy && typeof approval.approvedBy === 'object' ? approval.approvedBy as User : null;
+  const q = approval.quotation || (typeof approval.quotationId === 'object' ? approval.quotationId as Quotation : null);
+  const vendor = q?.vendor || (q && typeof q.vendorId === 'object' ? q.vendorId as Vendor : null);
+  const requestedBy = approval.approver || (typeof approval.requestedBy === 'object' ? approval.requestedBy as User : null);
+  const approvedBy = approval.approver || (approval.approvedBy && typeof approval.approvedBy === 'object' ? approval.approvedBy as User : null);
 
   const isManager = user?.role === 'manager' || user?.role === 'admin';
   const canGeneratePO = (user?.role === 'procurement_officer' || user?.role === 'admin') && approval.status === 'approved';

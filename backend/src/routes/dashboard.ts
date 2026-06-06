@@ -63,10 +63,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       }),
     ]);
 
-    // Total spend from paid/active invoices
+    // Total spend from generated/sent/paid invoices
     const spendAgg = await prisma.invoice.aggregate({
       _sum: { totalAmount: true },
-      where: { status: { in: ['sent', 'paid'] } },
+      where: { status: { in: ['generated', 'sent', 'paid'] } },
     });
     const totalSpend = spendAgg._sum.totalAmount ?? 0;
 

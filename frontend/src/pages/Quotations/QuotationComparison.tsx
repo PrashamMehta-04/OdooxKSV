@@ -87,14 +87,14 @@ const QuotationComparison: React.FC = () => {
 
   const filteredQuotations = submittedQuotations
     .filter((q) => {
-      const vendor = typeof q.vendorId === 'object' ? q.vendorId as Vendor : null;
+      const vendor = q.vendor || (typeof q.vendorId === 'object' ? q.vendorId as Vendor : null);
       if (filterCategory && vendor?.category !== filterCategory) return false;
       if (filterRating > 0 && (vendor?.rating || 0) < filterRating) return false;
       return true;
     })
     .sort((a, b) => {
-      const vendorA = typeof a.vendorId === 'object' ? a.vendorId as Vendor : null;
-      const vendorB = typeof b.vendorId === 'object' ? b.vendorId as Vendor : null;
+      const vendorA = a.vendor || (typeof a.vendorId === 'object' ? a.vendorId as Vendor : null);
+      const vendorB = b.vendor || (typeof b.vendorId === 'object' ? b.vendorId as Vendor : null);
       
       if (sortBy === 'price_asc') {
         return (a.totalAmount || 0) - (b.totalAmount || 0);
@@ -193,7 +193,7 @@ const QuotationComparison: React.FC = () => {
           ) : (
             <div className={`grid gap-4 ${filteredQuotations.length === 1 ? 'grid-cols-1 max-w-md' : filteredQuotations.length === 2 ? 'grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
               {filteredQuotations.map((q) => {
-              const vendor = typeof q.vendorId === 'object' ? q.vendorId as Vendor : null;
+              const vendor = q.vendor || (typeof q.vendorId === 'object' ? q.vendorId as Vendor : null);
               const isLowest = q.totalAmount === lowestAmount;
 
               return (

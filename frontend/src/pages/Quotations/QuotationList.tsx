@@ -44,7 +44,7 @@ const QuotationList: React.FC = () => {
     {
       header: 'RFQ Title',
       render: (row: Quotation) => {
-        const rfq = typeof row.rfqId === 'object' ? row.rfqId as RFQ : null;
+        const rfq = row.rfq || (typeof row.rfqId === 'object' ? row.rfqId as RFQ : null);
         return (
           <button
             onClick={() => navigate(`/quotations/${row.id}`)}
@@ -58,7 +58,7 @@ const QuotationList: React.FC = () => {
     {
       header: 'Vendor',
       render: (row: Quotation) => {
-        const v = typeof row.vendorId === 'object' ? row.vendorId as Vendor : null;
+        const v = row.vendor || (typeof row.vendorId === 'object' ? row.vendorId as Vendor : null);
         return <span>{v?.name || '—'}</span>;
       },
     },
@@ -76,7 +76,7 @@ const QuotationList: React.FC = () => {
     },
     {
       header: 'Submitted',
-      render: (row: Quotation) => row.submittedAt ? formatDate(row.submittedAt) : '—',
+      render: (row: Quotation) => formatDate(row.submittedAt || row.createdAt),
     },
     {
       header: 'Actions',

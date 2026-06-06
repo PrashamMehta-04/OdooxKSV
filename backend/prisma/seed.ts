@@ -4,528 +4,375 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const vendorCategories = [
+  "IT & Electronics",
+  "Office Supplies",
+  "Industrial Equipment",
+  "Catering Services",
+  "Cleaning Services",
+  "Logistics & Shipping",
+  "Marketing & Advertising",
+  "Consulting",
+  "Furniture",
+  "Construction",
+];
+
+const units = ["units", "reams", "boxes", "kg", "meters", "hours", "days"];
+
 async function main() {
-  console.log("🌱 Checking VendorBridge database...\n");
+  console.log("🌱 Cleaning up existing transaction data...\n");
+  await prisma.activityLog.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.approval.deleteMany();
+  await prisma.quotationItem.deleteMany();
+  await prisma.quotation.deleteMany();
+  await prisma.rfqVendor.deleteMany();
+  await prisma.rfqItem.deleteMany();
+  await prisma.rfq.deleteMany();
 
-  // ── Skip seed if data already exists (e.g. container restart) ────────────
-  const existingUser = await prisma.user.findFirst();
-  if (existingUser) {
-    console.log("⏭️  Database already seeded — skipping.\n");
-    return;
-  }
+  console.log("🌱 Seeding VendorBridge database with realistic dummy data...\n");
 
-  console.log("🌱 Seeding VendorBridge database...\n");
-
-  // ── Vendors ───────────────────────────────────────────────────────────────
-  const vendor1 = await prisma.vendor.create({
-    data: {
-      name: "TechSupply Co.",
-      email: "contact@techsupply.com",
-      phone: "+91-9876543210",
-      gstNumber: "GST27AABCT1234Z1Z5",
-      category: "IT & Electronics",
-      status: "active",
-      contactPerson: "Rahul Sharma",
-      address: "42 Tech Park, Pune, Maharashtra 411001",
-      rating: 4.5,
-    },
-  });
-
-  const vendor2 = await prisma.vendor.create({
-    data: {
-      name: "OfficeWorld Supplies",
-      email: "sales@officeworld.com",
-      phone: "+91-9765432109",
-      gstNumber: "GST29AABCO5678Z1Z2",
-      category: "Office Supplies",
-      status: "active",
-      contactPerson: "Priya Patel",
-      address: "15 Commercial Street, Bengaluru, Karnataka 560001",
-      rating: 4.2,
-    },
-  });
-
-  const vendor3 = await prisma.vendor.create({
-    data: {
-      name: "IndustrialParts Ltd.",
-      email: "enquiry@industrialparts.com",
-      phone: "+91-9654321098",
-      gstNumber: "GST06AABCI9012Z1Z8",
-      category: "Industrial Equipment",
-      status: "active",
-      contactPerson: "Amit Verma",
-      address: "Plot 8, Industrial Area Phase II, Noida, UP 201301",
-      rating: 3.8,
-    },
-  });
-
-  console.log("✅ Created 3 vendors");
-
-  // ── Users ─────────────────────────────────────────────────────────────────
   const adminPass = await bcrypt.hash("Admin@123", 10);
   const managerPass = await bcrypt.hash("Manager@123", 10);
   const officerPass = await bcrypt.hash("Officer@123", 10);
   const vendorPass = await bcrypt.hash("Vendor@123", 10);
 
-  const admin = await prisma.user.create({
-    data: {
+  // ── Users ─────────────────────────────────────────────────────────────────
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@vendorbridge.com" },
+    update: {},
+    create: {
       email: "admin@vendorbridge.com",
       password: adminPass,
-      name: "Admin User",
+      name: "System Admin",
       role: "admin",
     },
   });
 
-  const manager = await prisma.user.create({
-    data: {
+  const manager = await prisma.user.upsert({
+    where: { email: "manager@vendorbridge.com" },
+    update: {},
+    create: {
       email: "manager@vendorbridge.com",
       password: managerPass,
-      name: "Sarah Manager",
+      name: "Sarah Chen",
       role: "manager",
     },
   });
 
-  const officer = await prisma.user.create({
-    data: {
-      email: "officer@vendorbridge.com",
+  const officer1 = await prisma.user.upsert({
+    where: { email: "officer1@vendorbridge.com" },
+    update: {},
+    create: {
+      email: "officer1@vendorbridge.com",
       password: officerPass,
-      name: "John Officer",
+      name: "James Wilson",
       role: "procurement_officer",
     },
   });
 
-  const vendorUser1 = await prisma.user.create({
-    data: {
-      email: "rahul@techsupply.com",
-      password: vendorPass,
-      name: "Rahul Sharma",
-      role: "vendor",
-      vendorId: vendor1.id,
+  const officer2 = await prisma.user.upsert({
+    where: { email: "officer2@vendorbridge.com" },
+    update: {},
+    create: {
+      email: "officer2@vendorbridge.com",
+      password: officerPass,
+      name: "Emily Rodriguez",
+      role: "procurement_officer",
     },
   });
 
-  const vendorUser2 = await prisma.user.create({
-    data: {
-      email: "priya@officeworld.com",
-      password: vendorPass,
-      name: "Priya Patel",
-      role: "vendor",
-      vendorId: vendor2.id,
-    },
-  });
+  console.log("✅ Created/Verified core users (admin, manager, 2 officers)");
 
-  const vendorUser3 = await prisma.user.create({
-    data: {
-      email: "amit@industrialparts.com",
-      password: vendorPass,
-      name: "Amit Verma",
-      role: "vendor",
-      vendorId: vendor3.id,
-    },
-  });
+  // ── Vendors ───────────────────────────────────────────────────────────────
+  const vendors = [];
+  const vendorData = [
+    { name: "Global Tech Solutions", category: "IT & Electronics", email: "sales@globaltech.com" },
+    { name: "EcoOffice Supplies", category: "Office Supplies", email: "info@ecooffice.com" },
+    { name: "Precision Machining Ltd", category: "Industrial Equipment", email: "contact@precision.com" },
+    { name: "Gourmet Catering Co", category: "Catering Services", email: "events@gourmet.com" },
+    { name: "Sparkle Clean Services", category: "Cleaning Services", email: "service@sparkle.com" },
+    { name: "Swift Logistics", category: "Logistics & Shipping", email: "ops@swiftlogistics.com" },
+    { name: "Creative Edge Marketing", category: "Marketing & Advertising", email: "hello@creativeedge.com" },
+    { name: "Elite Consulting Group", category: "Consulting", email: "partner@eliteconsulting.com" },
+    { name: "Modern Spaces Furniture", category: "Furniture", email: "designs@modernspaces.com" },
+    { name: "Reliable Build & Co", category: "Construction", email: "projects@reliablebuild.com" },
+    { name: "Circuit Masters", category: "IT & Electronics", email: "support@circuitmasters.com" },
+    { name: "PaperTrail Supplies", category: "Office Supplies", email: "orders@papertrail.com" },
+  ];
 
-  console.log("✅ Created 6 users (admin, manager, officer, 3 vendor users)");
-
-  // ── RFQ 1 ─────────────────────────────────────────────────────────────────
-  const rfq1 = await prisma.rfq.create({
-    data: {
-      title: "Q4 2024 Laptop & Peripherals Procurement",
-      description:
-        "Procurement of laptops and accessories for the engineering team expansion.",
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-      status: "sent",
-      createdById: officer.id,
-      items: {
-        create: [
-          {
-            productName: "Business Laptop (i7, 16GB RAM, 512GB SSD)",
-            quantity: 20,
-            unit: "units",
-            description: "Windows 11 Pro",
-          },
-          {
-            productName: "Wireless Mouse",
-            quantity: 20,
-            unit: "units",
-            description: "Ergonomic, 2.4GHz",
-          },
-          {
-            productName: "USB-C Docking Station",
-            quantity: 20,
-            unit: "units",
-            description: "4K support, 7-in-1",
-          },
-          {
-            productName: 'External Monitor 27" 4K',
-            quantity: 10,
-            unit: "units",
-            description: "IPS panel, HDMI + DP",
-          },
-        ],
+  for (const data of vendorData) {
+    const v = await prisma.vendor.upsert({
+      where: { email: data.email },
+      update: {},
+      create: {
+        name: data.name,
+        email: data.email,
+        phone: `+91-${Math.floor(7000000000 + Math.random() * 2999999999)}`,
+        gstNumber: `GST${Math.floor(10 + Math.random() * 89)}AABC${Math.floor(1000 + Math.random() * 8999)}Z${Math.floor(1 + Math.random() * 9)}Z${Math.floor(1 + Math.random() * 9)}`,
+        category: data.category,
+        status: "active",
+        contactPerson: `${data.name.split(" ")[0]} Representative`,
+        address: `${Math.floor(10 + Math.random() * 900)} Business District, Metro City`,
+        rating: 3.5 + Math.random() * 1.5,
       },
-      rfqVendors: {
-        create: [{ vendorId: vendor1.id }, { vendorId: vendor2.id }],
+    });
+    vendors.push(v);
+
+    // Create a user for each vendor
+    await prisma.user.upsert({
+      where: { email: data.email },
+      update: {},
+      create: {
+        email: data.email,
+        password: vendorPass,
+        name: `${data.name} Admin`,
+        role: "vendor",
+        vendorId: v.id,
       },
-    },
-    include: { items: true },
-  });
+    });
+  }
 
-  // ── RFQ 2 ─────────────────────────────────────────────────────────────────
-  const rfq2 = await prisma.rfq.create({
-    data: {
-      title: "Annual Office Stationery & Furniture",
-      description:
-        "Annual procurement of office stationery, furniture, and ergonomic equipment.",
-      deadline: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days from now
-      status: "sent",
-      createdById: officer.id,
-      items: {
-        create: [
-          {
-            productName: "A4 Copy Paper (500 sheets/ream)",
-            quantity: 100,
-            unit: "reams",
-            description: "80 GSM, white",
-          },
-          {
-            productName: "Ballpoint Pens (box of 50)",
-            quantity: 20,
-            unit: "boxes",
-            description: "Blue ink",
-          },
-          {
-            productName: "Ergonomic Office Chair",
-            quantity: 15,
-            unit: "units",
-            description: "Lumbar support, adjustable height",
-          },
-          {
-            productName: "Standing Desk (height adjustable)",
-            quantity: 5,
-            unit: "units",
-            description: "Electric, dual-motor",
-          },
-        ],
+  console.log(`✅ Created/Verified ${vendors.length} vendors and their users`);
+
+  // ── RFQs ──────────────────────────────────────────────────────────────────
+  const rfqTitles = [
+    "Annual Laptop Refresh - Engineering", "Office Stationery Bulk Order Q1", "Heavy Duty Lathe Machine Parts",
+    "Corporate Event Catering - July", "Monthly Facility Deep Cleaning", "International Shipping Contract 2024",
+    "Brand Awareness Campaign - Phase 2", "Management Strategy Workshop", "Ergonomic Chairs for New Floor",
+    "Warehouse Roof Repair", "Cloud Server Subscription Renewal", "Printer Toner & Maintenance",
+    "Security System Upgrade", "Breakroom Supplies - Annual", "Legal Consulting Retainer",
+    "Vehicle Fleet Maintenance", "HVAC System Service", "Website Re-design Project",
+    "Employee Wellness Program", "Network Infrastructure Audit", "Customer Support Software License",
+    "Marketing Asset Design", "R&D Lab Equipment", "Safety Gear & PPE",
+  ];
+
+  const possibleStatuses: ("draft" | "sent" | "closed" | "cancelled")[] = ["sent", "closed", "sent", "closed", "draft", "sent", "sent", "sent", "sent", "cancelled", "sent", "sent"];
+
+  console.log("🌱 Generating 100 RFQs spread over 12 months...");
+  for (let i = 0; i < 100; i++) {
+    const title = `${rfqTitles[i % rfqTitles.length]} #${Math.floor(i / rfqTitles.length) + 1}`;
+    const status = possibleStatuses[i % possibleStatuses.length];
+    const officer = i % 2 === 0 ? officer1 : officer2;
+    
+    // Create RFQs spread over the last 12 months
+    const createdAt = new Date();
+    createdAt.setUTCMonth(createdAt.getUTCMonth() - Math.floor(Math.random() * 12));
+    createdAt.setUTCDate(Math.floor(1 + Math.random() * 28));
+    createdAt.setUTCHours(Math.floor(Math.random() * 23), Math.floor(Math.random() * 59));
+
+    const rfq = await prisma.rfq.create({
+      data: {
+        title: title,
+        description: `Standard procurement request for ${title.toLowerCase()}. Required by end of month.`,
+        deadline: new Date(createdAt.getTime() + (15 + Math.random() * 15) * 24 * 60 * 60 * 1000),
+        status: status,
+        createdById: officer.id,
+        createdAt: createdAt,
+        items: {
+          create: Array.from({ length: 3 + Math.floor(Math.random() * 3) }).map((_, idx) => ({
+            productName: `Item ${idx + 1} for ${title}`,
+            quantity: Math.floor(1 + Math.random() * 50),
+            unit: units[Math.floor(Math.random() * units.length)],
+            description: "Generic specification requirement",
+          })),
+        },
       },
-      rfqVendors: {
-        create: [{ vendorId: vendor2.id }, { vendorId: vendor3.id }],
-      },
-    },
-    include: { items: true },
-  });
+      include: { items: true },
+    });
 
-  // ── RFQ 3 (draft) ─────────────────────────────────────────────────────────
-  await prisma.rfq.create({
-    data: {
-      title: "Server Infrastructure Upgrade 2025",
-      description:
-        "Planning for next-gen server infrastructure to support AI workloads.",
-      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      status: "draft",
-      createdById: officer.id,
-      items: {
-        create: [
-          {
-            productName: "Rack Server (2U, Dual Xeon)",
-            quantity: 4,
-            unit: "units",
+    if (status === "sent" || status === "closed") {
+      // Invite 3-4 random vendors
+      const invitedVendors = [...vendors].sort(() => 0.5 - Math.random()).slice(0, 3 + Math.floor(Math.random() * 2));
+      for (const v of invitedVendors) {
+        await prisma.rfqVendor.create({
+          data: {
+            rfqId: rfq.id,
+            vendorId: v.id,
           },
-          {
-            productName: "Network Switch (48-port)",
-            quantity: 2,
-            unit: "units",
-          },
-          { productName: "UPS 10KVA", quantity: 2, unit: "units" },
-        ],
-      },
-    },
-  });
+        });
 
-  console.log("✅ Created 3 RFQs (2 sent, 1 draft)");
+        // Create quotations for sent/closed RFQs
+        const rand = Math.random();
+        if (rand > 0.2) { // 80% chance to have some interaction
+          const totalAmount = 10000 + Math.random() * 90000;
+          
+          // Determine status: draft, submitted, selected, or rejected
+          let qStatus: "draft" | "submitted" | "selected" | "rejected" = "submitted";
+          if (status === "closed") {
+            qStatus = Math.random() > 0.5 ? "selected" : "rejected";
+          } else {
+            // For 'sent' RFQs, some are still drafts, some submitted
+            const subRand = Math.random();
+            if (subRand < 0.2) qStatus = "draft";
+            else if (subRand < 0.8) qStatus = "submitted";
+            else qStatus = "selected"; // Under review
+          }
+          
+          const qCreatedAt = new Date(createdAt.getTime() + (2 + Math.random() * 5) * 24 * 60 * 60 * 1000);
 
-  // ── Quotations for RFQ 1 ──────────────────────────────────────────────────
-  const rfq1Items = rfq1.items;
+          const quotation = await prisma.quotation.create({
+            data: {
+              rfqId: rfq.id,
+              vendorId: v.id,
+              totalAmount: totalAmount,
+              deliveryTimeline: `${Math.floor(5 + Math.random() * 15)} days`,
+              notes: "Standard terms and conditions apply.",
+              status: qStatus,
+              createdAt: qCreatedAt,
+              items: {
+                create: rfq.items.map((item) => ({
+                  rfqItemId: item.id,
+                  unitPrice: totalAmount / rfq.items.length / item.quantity,
+                  totalPrice: totalAmount / rfq.items.length,
+                })),
+              },
+            },
+          });
 
-  const quotation1 = await prisma.quotation.create({
-    data: {
-      rfqId: rfq1.id,
-      vendorId: vendor1.id,
-      totalAmount: 1085000,
-      deliveryTimeline: "7-10 business days",
-      notes:
-        "All items are from tier-1 manufacturers. 1-year onsite warranty included.",
-      status: "submitted",
-      items: {
-        create: [
-          {
-            rfqItemId: rfq1Items[0].id,
-            unitPrice: 45000,
-            totalPrice: 900000,
-            notes: "Dell Latitude 5540",
-          },
-          {
-            rfqItemId: rfq1Items[1].id,
-            unitPrice: 1500,
-            totalPrice: 30000,
-            notes: "Logitech MX Anywhere 3",
-          },
-          {
-            rfqItemId: rfq1Items[2].id,
-            unitPrice: 5500,
-            totalPrice: 110000,
-            notes: "Anker 577 Thunderbolt Hub",
-          },
-          {
-            rfqItemId: rfq1Items[3].id,
-            unitPrice: 4500,
-            totalPrice: 45000,
-            notes: "LG 27UL500-W 4K Monitor",
-          },
-        ],
-      },
-    },
-  });
+          // Create approvals for 'selected' (under review) or 'approved' quotations
+          if (qStatus === "selected" || qStatus === "rejected") {
+            const isApproved = status === "closed" && qStatus === "selected";
+            const appStatus = isApproved ? "approved" : (qStatus === "rejected" ? "rejected" : "pending");
+            
+            const approvalCreatedAt = new Date(qCreatedAt.getTime() + (1 + Math.random() * 3) * 24 * 60 * 60 * 1000);
+            const approval = await prisma.approval.create({
+              data: {
+                quotationId: quotation.id,
+                approverId: manager.id,
+                status: appStatus,
+                remarks: appStatus === "approved" ? "Competitive pricing." : (appStatus === "rejected" ? "Budget exceeded." : null),
+                createdAt: approvalCreatedAt,
+              },
+            });
 
-  const quotation2 = await prisma.quotation.create({
-    data: {
-      rfqId: rfq1.id,
-      vendorId: vendor2.id,
-      totalAmount: 1020000,
-      deliveryTimeline: "10-14 business days",
-      notes: "Competitive pricing. We can offer bulk discount on next order.",
-      status: "submitted",
-      items: {
-        create: [
-          {
-            rfqItemId: rfq1Items[0].id,
-            unitPrice: 42000,
-            totalPrice: 840000,
-            notes: "HP EliteBook 845 G10",
-          },
-          {
-            rfqItemId: rfq1Items[1].id,
-            unitPrice: 1800,
-            totalPrice: 36000,
-            notes: "HP 925 Ergonomic Mouse",
-          },
-          {
-            rfqItemId: rfq1Items[2].id,
-            unitPrice: 6200,
-            totalPrice: 124000,
-            notes: "HP USB-C Dock G5",
-          },
-          {
-            rfqItemId: rfq1Items[3].id,
-            unitPrice: 2000,
-            totalPrice: 20000,
-            notes: "Samsung LS27A600NWWXXL",
-          },
-        ],
-      },
-    },
-  });
+            if (appStatus === "approved") {
+              const poCreatedAt = new Date(approvalCreatedAt.getTime() + (1 + Math.random() * 2) * 24 * 60 * 60 * 1000);
+              const po = await prisma.purchaseOrder.create({
+                data: {
+                  approvalId: approval.id,
+                  poNumber: `PO-${poCreatedAt.getUTCFullYear()}-${Math.floor(1000 + Math.random() * 8999)}`,
+                  totalAmount: totalAmount * 1.18,
+                  taxAmount: totalAmount * 0.18,
+                  taxRate: 18,
+                  status: "active",
+                  createdAt: poCreatedAt,
+                },
+              });
 
-  // ── Quotations for RFQ 2 ──────────────────────────────────────────────────
-  const rfq2Items = rfq2.items;
+              if (Math.random() > 0.5) {
+                const invCreatedAt = new Date(poCreatedAt.getTime() + (3 + Math.random() * 7) * 24 * 60 * 60 * 1000);
+                await prisma.invoice.create({
+                  data: {
+                    purchaseOrderId: po.id,
+                    invoiceNumber: `INV-${invCreatedAt.getUTCFullYear()}-${Math.floor(1000 + Math.random() * 8999)}`,
+                    totalAmount: po.totalAmount,
+                    taxAmount: po.taxAmount,
+                    status: Math.random() > 0.5 ? "paid" : "sent",
+                    createdAt: invCreatedAt,
+                  },
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
-  const quotation3 = await prisma.quotation.create({
-    data: {
-      rfqId: rfq2.id,
-      vendorId: vendor2.id,
-      totalAmount: 198500,
-      deliveryTimeline: "3-5 business days",
-      notes: "All stationery items in stock. Furniture has 2-week lead time.",
-      status: "submitted",
-      items: {
-        create: [
-          {
-            rfqItemId: rfq2Items[0].id,
-            unitPrice: 350,
-            totalPrice: 35000,
-            notes: "JK Copier 80 GSM",
-          },
-          {
-            rfqItemId: rfq2Items[1].id,
-            unitPrice: 250,
-            totalPrice: 5000,
-            notes: "Cello Gripper",
-          },
-          {
-            rfqItemId: rfq2Items[2].id,
-            unitPrice: 9500,
-            totalPrice: 142500,
-            notes: "Featherlite Delta Plus",
-          },
-          {
-            rfqItemId: rfq2Items[3].id,
-            unitPrice: 16000,
-            totalPrice: 80000,
-            notes: "Autonomous SmartDesk Pro",
-          },
-        ],
-      },
-    },
-  });
-
-  console.log("✅ Created 3 quotations (all submitted)");
-
-  // ── Approval for quotation1 (selected vendor for RFQ 1) ───────────────────
-  const approval1 = await prisma.approval.create({
-    data: {
-      quotationId: quotation1.id,
-      approverId: manager.id,
-      status: "approved",
-      remarks: "Best value with warranty. Approved.",
-    },
-  });
-
-  // Mark quotation as selected
-  await prisma.quotation.update({
-    where: { id: quotation1.id },
-    data: { status: "selected" },
-  });
-
-  // ── Purchase Order from approved quotation ────────────────────────────────
-  const po1 = await prisma.purchaseOrder.create({
-    data: {
-      approvalId: approval1.id,
-      poNumber: "PO-2024-001",
-      totalAmount: 1280300, // 1085000 + 18% GST
-      taxAmount: 195300,
-      taxRate: 18,
-      status: "active",
-    },
-  });
-
-  // ── Invoice from PO ───────────────────────────────────────────────────────
-  await prisma.invoice.create({
-    data: {
-      purchaseOrderId: po1.id,
-      invoiceNumber: "INV-2024-001",
-      totalAmount: 1280300,
-      taxAmount: 195300,
-      status: "generated",
-    },
-  });
-
-  // ── Approval for quotation3 (pending) ─────────────────────────────────────
-  await prisma.approval.create({
-    data: {
-      quotationId: quotation3.id,
-      approverId: manager.id,
-      status: "pending",
-    },
-  });
-  await prisma.quotation.update({
-    where: { id: quotation3.id },
-    data: { status: "selected" },
-  });
-
-  console.log("✅ Created approval, purchase order, and invoice");
+  console.log("✅ Created RFQs with random distributions of quotations, approvals, POs, and invoices");
 
   // ── Sample notifications ───────────────────────────────────────────────────
+  const allUsers = await prisma.user.findMany();
   await prisma.notification.createMany({
-    data: [
-      {
-        userId: vendorUser1.id,
-        title: "New RFQ Invitation",
-        message: `You have been invited to submit a quotation for RFQ: "${rfq1.title}"`,
-        read: true,
-      },
-      {
-        userId: vendorUser2.id,
-        title: "New RFQ Invitation",
-        message: `You have been invited to submit a quotation for RFQ: "${rfq1.title}"`,
-        read: false,
-      },
-      {
-        userId: manager.id,
-        title: "Approval Required",
-        message: `A quotation from "OfficeWorld Supplies" for RFQ "${rfq2.title}" requires your approval.`,
-        read: false,
-      },
-      {
-        userId: officer.id,
-        title: "Quotation Approved",
-        message: `The quotation from "TechSupply Co." for RFQ "${rfq1.title}" has been approved.`,
-        read: false,
-      },
-    ],
+    data: Array.from({ length: 20 }).map(() => ({
+      userId: allUsers[Math.floor(Math.random() * allUsers.length)].id,
+      title: "System Update",
+      message: "New procurement guidelines have been uploaded to the portal.",
+      read: Math.random() > 0.5,
+    })),
   });
 
   // ── Activity Logs ─────────────────────────────────────────────────────────
+  console.log("🌱 Generating activity logs...");
+  const allRfqs = await prisma.rfq.findMany();
+  const allQuotations = await prisma.quotation.findMany();
+  const allApprovals = await prisma.approval.findMany();
+  const allPos = await prisma.purchaseOrder.findMany();
+
+  const activityLogs = [];
+
+  for (const rfq of allRfqs) {
+    activityLogs.push({
+      userId: rfq.createdById,
+      entityType: "rfq",
+      entityId: rfq.id,
+      action: "created",
+      details: `RFQ "${rfq.title}" was created by ${rfq.createdById === officer1.id ? "James Wilson" : "Emily Rodriguez"}`,
+      createdAt: new Date(rfq.createdAt.getTime() - 1000 * 60 * 60), // 1 hour before
+    });
+    if (rfq.status !== "draft") {
+      activityLogs.push({
+        userId: rfq.createdById,
+        entityType: "rfq",
+        entityId: rfq.id,
+        action: "sent",
+        details: `RFQ "${rfq.title}" was sent to invited vendors`,
+        createdAt: rfq.createdAt,
+      });
+    }
+  }
+
+  for (const q of allQuotations) {
+    const v = vendors.find(vend => vend.id === q.vendorId);
+    activityLogs.push({
+      userId: (await prisma.user.findFirst({ where: { vendorId: q.vendorId } }))?.id || admin.id,
+      entityType: "quotation",
+      entityId: q.id,
+      action: "submitted",
+      details: `Quotation submitted by ${v?.name || "Vendor"}`,
+      createdAt: q.createdAt,
+    });
+  }
+
+  for (const app of allApprovals) {
+    activityLogs.push({
+      userId: app.approverId,
+      entityType: "approval",
+      entityId: app.id,
+      action: "approved",
+      details: `Quotation approved by Sarah Chen`,
+      createdAt: app.createdAt,
+    });
+  }
+
+  for (const po of allPos) {
+    activityLogs.push({
+      userId: officer1.id,
+      entityType: "purchase_order",
+      entityId: po.id,
+      action: "created",
+      details: `Purchase Order ${po.poNumber} generated`,
+      createdAt: po.createdAt,
+    });
+  }
+
   await prisma.activityLog.createMany({
-    data: [
-      {
-        userId: officer.id,
-        entityType: "rfq",
-        entityId: rfq1.id,
-        action: "created",
-        details: `RFQ "${rfq1.title}" created`,
-      },
-      {
-        userId: officer.id,
-        entityType: "rfq",
-        entityId: rfq1.id,
-        action: "sent",
-        details: `RFQ sent to 2 vendors`,
-      },
-      {
-        userId: officer.id,
-        entityType: "rfq",
-        entityId: rfq2.id,
-        action: "created",
-        details: `RFQ "${rfq2.title}" created`,
-      },
-      {
-        userId: officer.id,
-        entityType: "rfq",
-        entityId: rfq2.id,
-        action: "sent",
-        details: `RFQ sent to 2 vendors`,
-      },
-      {
-        userId: vendorUser1.id,
-        entityType: "quotation",
-        entityId: quotation1.id,
-        action: "created",
-        details: "Quotation submitted",
-      },
-      {
-        userId: vendorUser2.id,
-        entityType: "quotation",
-        entityId: quotation2.id,
-        action: "created",
-        details: "Quotation submitted",
-      },
-      {
-        userId: manager.id,
-        entityType: "approval",
-        entityId: approval1.id,
-        action: "approved",
-        details: "Quotation approved",
-      },
-      {
-        userId: officer.id,
-        entityType: "purchase_order",
-        entityId: po1.id,
-        action: "created",
-        details: `PO ${po1.poNumber} created`,
-      },
-    ],
+    data: activityLogs,
   });
 
-  console.log("✅ Created notifications and activity logs\n");
+  console.log(`✅ Created ${activityLogs.length} activity logs`);
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🎉 Seed complete! Login credentials:");
+  console.log("🎉 Seed complete! Realistic data is now available.");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("  Admin     : admin@vendorbridge.com    / Admin@123");
   console.log("  Manager   : manager@vendorbridge.com  / Manager@123");
-  console.log("  Officer   : officer@vendorbridge.com  / Officer@123");
-  console.log("  Vendor 1  : rahul@techsupply.com      / Vendor@123");
-  console.log("  Vendor 2  : priya@officeworld.com     / Vendor@123");
-  console.log("  Vendor 3  : amit@industrialparts.com  / Vendor@123");
+  console.log("  Officer 1 : officer1@vendorbridge.com / Officer@123");
+  console.log("  Officer 2 : officer2@vendorbridge.com / Officer@123");
+  console.log("  Vendors   : [Use email from list above] / Vendor@123");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 }
 

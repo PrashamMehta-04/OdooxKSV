@@ -29,13 +29,6 @@ const otpSchema = z.object({
   otp: z.string().regex(/^\d{6}$/, 'Enter the 6-digit OTP'),
 });
 
-const demoCredentials = [
-  { label: 'Admin', email: 'admin@vendorbridge.com', password: 'Admin@123', color: 'bg-purple-50 border-purple-100 text-purple-700' },
-  { label: 'Manager', email: 'manager@vendorbridge.com', password: 'Manager@123', color: 'bg-blue-50 border-blue-100 text-blue-700' },
-  { label: 'Officer', email: 'officer@vendorbridge.com', password: 'Officer@123', color: 'bg-green-50 border-green-100 text-green-700' },
-  { label: 'Vendor', email: 'rahul@techsupply.com', password: 'Vendor@123', color: 'bg-orange-50 border-orange-100 text-orange-700' },
-];
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -49,7 +42,6 @@ const Login: React.FC = () => {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -188,28 +180,6 @@ const Login: React.FC = () => {
               Sign up
             </Link>
           </p>
-        </div>
-
-        {/* Demo credentials */}
-        <div className="mt-6">
-          <p className="text-xs text-center text-gray-500 mb-3 font-medium uppercase tracking-wide">
-            Demo credentials — click to fill
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoCredentials.map((cred) => (
-              <button
-                key={cred.label}
-                onClick={() => {
-                  setValue('email', cred.email);
-                  setValue('password', cred.password);
-                }}
-                className={`text-left px-3 py-2.5 rounded-lg border text-xs font-medium transition-all hover:shadow-sm ${cred.color}`}
-              >
-                <div className="font-semibold">{cred.label}</div>
-                <div className="opacity-75 truncate">{cred.email}</div>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
