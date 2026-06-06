@@ -15,11 +15,20 @@ async function generatePoNumber(): Promise<string> {
 }
 
 // GET /api/purchase-orders
-router.get('/', requireRole('admin', 'procurement_officer', 'manager'), async (req: AuthRequest, res: Response) => {
+router.get('/', requireRole('admin', 'procurement_officer', 'manager', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const { status } = req.query as Record<string, string>;
     const where: any = {};
     if (status) where.status = status;
+
+    // Vendor users only see POs belonging to their quotations
+    if (req.user!.role === 'vendor' && req.user!.vendorId) {
+      where.approval = {
+        quotation: {
+          vendorId: req.user!.vendorId,
+        },
+      };
+    }
 
     const orders = await prisma.purchaseOrder.findMany({
       where,
@@ -127,7 +136,7 @@ router.post(
 );
 
 // GET /api/purchase-orders/:id
-router.get('/:id', requireRole('admin', 'procurement_officer', 'manager'), async (req: AuthRequest, res: Response) => {
+router.get('/:id', requireRole('admin', 'procurement_officer', 'manager', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const po = await prisma.purchaseOrder.findUnique({
       where: { id: req.params.id },
@@ -149,6 +158,15 @@ router.get('/:id', requireRole('admin', 'procurement_officer', 'manager'), async
     });
 
     if (!po) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+
+    // Vendor can only see their own purchase order
+    if (req.user!.role === 'vendor') {
+      const vendor = po.approval.quotation.vendor;
+      if (vendor.id !== req.user!.vendorId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     return res.json({ success: true, data: po });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });

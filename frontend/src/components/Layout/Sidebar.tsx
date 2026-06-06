@@ -56,7 +56,7 @@ const navItems: NavItem[] = [
     label: 'Purchase Orders',
     to: '/purchase-orders',
     icon: <ShoppingCart size={18} />,
-    roles: ['admin', 'procurement_officer', 'manager'],
+    roles: ['admin', 'procurement_officer', 'manager', 'vendor'],
   },
   {
     label: 'Invoices',
