@@ -12,6 +12,7 @@ model User {
   email     String   @unique
   password  String
   name      String
+  phone     String?
   role      String   @default("procurement_officer") // admin | procurement_officer | vendor | manager
   vendorId  String? // if role=vendor, link to Vendor
   otp       String?

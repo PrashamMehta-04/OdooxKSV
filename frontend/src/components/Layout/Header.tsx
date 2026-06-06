@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Menu, LogOut, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../api/axios';
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -162,7 +164,10 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               </div>
               <button
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                onClick={() => {}}
+                onClick={() => {
+                  setShowUserMenu(false);
+                  navigate('/profile');
+                }}
               >
                 <User size={14} />
                 Profile

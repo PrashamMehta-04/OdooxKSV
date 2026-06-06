@@ -47,7 +47,7 @@ router.post(
         return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
 
-      const { email, password, name, role = 'procurement_officer', vendorId, vendorName } = req.body;
+      const { email, password, name, phone, role = 'procurement_officer', vendorId, vendorName } = req.body;
 
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
@@ -77,10 +77,11 @@ router.post(
           email,
           password: hashed,
           name,
+          phone,
           role,
           vendorId: finalVendorId || null,
         },
-        select: { id: true, email: true, name: true, role: true, vendorId: true, createdAt: true },
+        select: { id: true, email: true, name: true, phone: true, role: true, vendorId: true, createdAt: true },
       });
 
       const token = jwt.sign(
@@ -146,11 +147,29 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
       select: {
-        id: true, email: true, name: true, role: true, vendorId: true, createdAt: true, updatedAt: true,
+        id: true, email: true, name: true, phone: true, role: true, vendorId: true, createdAt: true, updatedAt: true,
         vendor: { select: { id: true, name: true, category: true, status: true } },
       },
     });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    return res.json({ success: true, data: user });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /api/auth/update
+router.put('/update', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, phone } = req.body;
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        ...(name && { name }),
+        ...(phone && { phone }),
+      },
+      select: { id: true, email: true, name: true, phone: true, role: true, vendorId: true, createdAt: true, updatedAt: true },
+    });
     return res.json({ success: true, data: user });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });

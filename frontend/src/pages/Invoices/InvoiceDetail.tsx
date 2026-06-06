@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Mail, Printer, Zap } from 'lucide-react';
+import { ArrowLeft, Mail, Printer, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import api, { API_BASE_URL } from '../../api/axios';
+import api from '../../api/axios';
 import { Invoice } from '../../types';
 import { getInvoiceItems, getInvoicePurchaseOrder, getInvoiceSubtotal, getInvoiceTax, getInvoiceVendor } from '../../utils/procurement';
 import Card from '../../components/ui/Card';
@@ -43,11 +43,6 @@ const InvoiceDetail: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const downloadPDF = () => {
-    const token = localStorage.getItem('vendorbridge_token');
-    window.open(`${API_BASE_URL}/invoices/${id}/pdf?token=${token}`, '_blank');
   };
 
   const sendEmail = async () => {
@@ -93,9 +88,6 @@ const InvoiceDetail: React.FC = () => {
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" leftIcon={<Printer size={13} />} onClick={() => window.print()}>
             Print
-          </Button>
-          <Button variant="outline" size="sm" leftIcon={<Download size={13} />} onClick={downloadPDF}>
-            Download PDF
           </Button>
           <Button size="sm" leftIcon={<Mail size={13} />} onClick={() => setShowEmailModal(true)}>
             Send via Email

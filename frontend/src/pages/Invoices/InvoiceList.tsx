@@ -88,13 +88,6 @@ const InvoiceList: React.FC = () => {
             <Eye size={14} />
           </button>
           <button
-            onClick={() => downloadPDF(row.id)}
-            className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-            title="Download PDF"
-          >
-            <Download size={14} />
-          </button>
-          <button
             onClick={() => navigate(`/invoices/${row.id}`)}
             className="p-1.5 rounded text-gray-400 hover:text-green-600 hover:bg-green-50"
             title="Send Email"
@@ -117,6 +110,23 @@ const InvoiceList: React.FC = () => {
           columns={columns}
           data={invoices}
           isLoading={isLoading}
+          keyExtractor={(r) => r.id}
+          emptyMessage="No invoices yet."
+        />
+      </Card>
+    </div>
+  );
+};
+
+export default InvoiceList;
+  />
+      </Card>
+    </div>
+  );
+};
+
+export default InvoiceList;
+    isLoading={isLoading}
           keyExtractor={(r) => r.id}
           emptyMessage="No invoices yet."
         />

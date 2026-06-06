@@ -9,12 +9,14 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
+  updateUser: (data: Partial<User>) => void;
   logout: () => void;
 }
 
 interface SignupData {
   name: string;
   email: string;
+  phone: string;
   password: string;
   role: string;
   vendorName?: string;
@@ -90,6 +92,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = useCallback((updatedUser: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const newUser = { ...prev, ...updatedUser };
+      localStorage.setItem('vendorbridge_user', JSON.stringify(newUser));
+      return newUser;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -99,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         signup,
+        updateUser,
         logout,
       }}
     >

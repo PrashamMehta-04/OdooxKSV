@@ -13,12 +13,14 @@ import Select from '../components/ui/Select';
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.enum(['procurement_officer', 'manager', 'vendor'], {
     required_error: 'Please select a role',
   }),
   vendorName: z.string().optional(),
-}).refine((d) => d.role !== 'vendor' || (d.vendorName && d.vendorName.length > 0), {
+})
+.refine((d) => d.role !== 'vendor' || (d.vendorName && d.vendorName.length > 0), {
   message: 'Vendor company name is required',
   path: ['vendorName'],
 });
@@ -79,6 +81,13 @@ const Signup: React.FC = () => {
               placeholder="you@example.com"
               error={errors.email?.message}
               {...register('email')}
+            />
+            <Input
+              label="Phone number"
+              type="tel"
+              placeholder="9876543210"
+              error={errors.phone?.message}
+              {...register('phone')}
             />
             <Input
               label="Password"

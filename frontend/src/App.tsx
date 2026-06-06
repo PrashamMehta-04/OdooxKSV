@@ -30,6 +30,7 @@ import InvoiceList from './pages/Invoices/InvoiceList';
 import InvoiceDetail from './pages/Invoices/InvoiceDetail';
 import ActivityLogList from './pages/ActivityLogs/ActivityLogList';
 import Reports from './pages/Reports/Reports';
+import Profile from './pages/Profile';
 
 // Role-based access control map
 const roleAccess: Record<string, UserRole[]> = {
@@ -90,6 +91,7 @@ const AppRoutes: React.FC = () => {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
 
         {/* Vendors */}
         <Route
