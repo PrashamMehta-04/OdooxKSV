@@ -144,6 +144,12 @@ func (s *Store) SelectQuotation(ctx context.Context, quotationID, actorID string
 		`, quotationID); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE rfqs SET status = 'selected', updated_at = NOW()
+			WHERE id = (SELECT rfq_id FROM quotations WHERE id = $1::uuid)
+		`, quotationID); err != nil {
+			return err
+		}
 		if err := s.insertApprovalChain(ctx, tx, selected.ID, actorID); err != nil {
 			return err
 		}

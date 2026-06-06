@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { SectionCard } from '../components/SectionCard';
+import { TrendChart } from '../components/TrendChart';
 import { apiFetch } from '../lib/api';
 import { formatCurrency, formatDateTime, formatActivity } from '../lib/format';
 import type { ActivityLog, DashboardMetrics, SpendTrendPoint } from '../lib/types';
@@ -50,23 +51,9 @@ export function DashboardPage() {
 
       <div className="two-col">
         <SectionCard title="Spending trends" subtitle="Visual spend analytics">
-          <div className="trend-chart">
+          <div className="card-chart-container">
             {trend.length ? (
-              trend.map((point) => (
-                <div key={point.month} className="trend-chart__bar">
-                  <div className="trend-chart__bar-track">
-                    <div
-                      className="trend-chart__bar-fill"
-                      style={{ 
-                        height: `${Math.min(100, Math.max(12, point.amount / 2500))}%`,
-                        background: 'var(--accent)'
-                      }}
-                    />
-                  </div>
-                  <span>{point.month}</span>
-                  <strong>{formatCurrency(point.amount)}</strong>
-                </div>
-              ))
+              <TrendChart data={trend} type="bar" />
             ) : (
               <div className="empty-state">No spend history yet.</div>
             )}
@@ -107,4 +94,3 @@ export function DashboardPage() {
     </>
   );
 }
-

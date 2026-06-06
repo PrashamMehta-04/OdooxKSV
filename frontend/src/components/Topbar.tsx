@@ -10,7 +10,7 @@ export function Topbar({
   return (
     <header className="topbar">
       <div className="sidebar__brand" style={{ border: 'none', padding: 0, margin: 0 }}>
-        <div className="brand-mark">VB</div>
+        <img src="/logo.svg" alt="VB" className="brand-mark" style={{ width: '32px', height: '32px' }} />
         <div>
           <div className="brand-title" style={{ color: 'var(--text)' }}>VendorBridge</div>
           <div className="brand-subtitle" style={{ color: 'var(--muted)' }}>ERP workspace</div>

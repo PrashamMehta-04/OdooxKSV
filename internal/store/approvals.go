@@ -29,18 +29,21 @@ func (s *Store) insertApprovalChain(ctx context.Context, tx *sql.Tx, quotationID
 
 func (s *Store) ListApprovals(ctx context.Context, status string, limit, offset int) ([]domain.Approval, error) {
 	query := `
-		SELECT id::text, quotation_id::text, COALESCE(approver_id::text, ''), level, status, COALESCE(remarks, ''), approved_at, created_at, updated_at
-		FROM approvals
+		SELECT a.id::text, a.quotation_id::text, COALESCE(a.approver_id::text, ''), a.level, a.status, COALESCE(a.remarks, ''), a.approved_at, a.created_at, a.updated_at, r.title as rfq_title, v.name as vendor_name
+		FROM approvals a
+		INNER JOIN quotations q ON q.id = a.quotation_id
+		INNER JOIN rfqs r ON r.id = q.rfq_id
+		INNER JOIN vendors v ON v.id = q.vendor_id
 		WHERE 1=1
 	`
 	args := make([]any, 0, 3)
 	idx := 1
 	if status != "" {
-		query += fmt.Sprintf(" AND status = $%d", idx)
+		query += fmt.Sprintf(" AND a.status = $%d", idx)
 		args = append(args, status)
 		idx++
 	}
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY a.created_at DESC"
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", idx)
 		args = append(args, limit)
@@ -61,7 +64,7 @@ func (s *Store) ListApprovals(ctx context.Context, status string, limit, offset 
 	for rows.Next() {
 		var approval domain.Approval
 		var approvedAt sql.NullTime
-		if err := rows.Scan(&approval.ID, &approval.QuotationID, &approval.ApproverID, &approval.Level, &approval.Status, &approval.Remarks, &approvedAt, &approval.CreatedAt, &approval.UpdatedAt); err != nil {
+		if err := rows.Scan(&approval.ID, &approval.QuotationID, &approval.ApproverID, &approval.Level, &approval.Status, &approval.Remarks, &approvedAt, &approval.CreatedAt, &approval.UpdatedAt, &approval.RFQTitle, &approval.VendorName); err != nil {
 			return nil, err
 		}
 		approval.ApprovedAt = parseTimePtr(approvedAt)
@@ -76,13 +79,16 @@ func (s *Store) ListPendingApprovals(ctx context.Context, limit, offset int) ([]
 
 func (s *Store) GetApproval(ctx context.Context, id string) (domain.Approval, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id::text, quotation_id::text, COALESCE(approver_id::text, ''), level, status, COALESCE(remarks, ''), approved_at, created_at, updated_at
-		FROM approvals
-		WHERE id = $1::uuid
+		SELECT a.id::text, a.quotation_id::text, COALESCE(a.approver_id::text, ''), a.level, a.status, COALESCE(a.remarks, ''), a.approved_at, a.created_at, a.updated_at, r.title as rfq_title, v.name as vendor_name
+		FROM approvals a
+		INNER JOIN quotations q ON q.id = a.quotation_id
+		INNER JOIN rfqs r ON r.id = q.rfq_id
+		INNER JOIN vendors v ON v.id = q.vendor_id
+		WHERE a.id = $1::uuid
 	`, id)
 	var approval domain.Approval
 	var approvedAt sql.NullTime
-	if err := row.Scan(&approval.ID, &approval.QuotationID, &approval.ApproverID, &approval.Level, &approval.Status, &approval.Remarks, &approvedAt, &approval.CreatedAt, &approval.UpdatedAt); err != nil {
+	if err := row.Scan(&approval.ID, &approval.QuotationID, &approval.ApproverID, &approval.Level, &approval.Status, &approval.Remarks, &approvedAt, &approval.CreatedAt, &approval.UpdatedAt, &approval.RFQTitle, &approval.VendorName); err != nil {
 		return domain.Approval{}, err
 	}
 	approval.ApprovedAt = parseTimePtr(approvedAt)
@@ -128,6 +134,12 @@ func (s *Store) DecideApproval(ctx context.Context, approvalID, approverID strin
 
 		if pendingCount == 0 {
 			if _, err := tx.ExecContext(ctx, `UPDATE quotations SET status = 'approved', updated_at = NOW() WHERE id = $1::uuid`, updated.QuotationID); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE rfqs SET status = 'approved', updated_at = NOW() 
+				WHERE id = (SELECT rfq_id FROM quotations WHERE id = $1::uuid)
+			`, updated.QuotationID); err != nil {
 				return err
 			}
 			generatedPO, generatedInvoice, err := s.createPurchaseOrderAndInvoice(ctx, tx, updated.QuotationID, actorID, now)

@@ -139,18 +139,23 @@ func insertInvoiceLineItems(ctx context.Context, tx *sql.Tx, invoiceID string, i
 
 func (s *Store) ListPurchaseOrders(ctx context.Context, vendorID string, limit, offset int) ([]domain.PurchaseOrder, error) {
 	query := `
-		SELECT id::text, po_number, COALESCE(rfq_id::text, ''), COALESCE(quotation_id::text, ''), COALESCE(vendor_id::text, ''), status, subtotal, gst_amount, grand_total, po_date, created_at, updated_at
-		FROM purchase_orders
-		WHERE deleted_at IS NULL
+		SELECT 
+			p.id::text, p.po_number, COALESCE(p.rfq_id::text, ''), COALESCE(p.quotation_id::text, ''), 
+			COALESCE(p.vendor_id::text, ''), p.status, p.subtotal, p.gst_amount, p.grand_total, p.po_date, 
+			p.created_at, p.updated_at, r.title as rfq_title, v.name as vendor_name
+		FROM purchase_orders p
+		INNER JOIN rfqs r ON r.id = p.rfq_id
+		INNER JOIN vendors v ON v.id = p.vendor_id
+		WHERE p.deleted_at IS NULL
 	`
 	args := []any{}
 	idx := 1
 	if vendorID != "" {
-		query += fmt.Sprintf(" AND vendor_id = $%d::uuid", idx)
+		query += fmt.Sprintf(" AND p.vendor_id = $%d::uuid", idx)
 		args = append(args, vendorID)
 		idx++
 	}
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY p.created_at DESC"
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", idx)
 		args = append(args, limit)
@@ -170,7 +175,7 @@ func (s *Store) ListPurchaseOrders(ctx context.Context, vendorID string, limit, 
 	for rows.Next() {
 		var po domain.PurchaseOrder
 		var poDate sql.NullTime
-		if err := rows.Scan(&po.ID, &po.PONumber, &po.RFQID, &po.QuotationID, &po.VendorID, &po.Status, &po.Subtotal, &po.GSTAmount, &po.GrandTotal, &poDate, &po.CreatedAt, &po.UpdatedAt); err != nil {
+		if err := rows.Scan(&po.ID, &po.PONumber, &po.RFQID, &po.QuotationID, &po.VendorID, &po.Status, &po.Subtotal, &po.GSTAmount, &po.GrandTotal, &poDate, &po.CreatedAt, &po.UpdatedAt, &po.RFQTitle, &po.VendorName); err != nil {
 			return nil, err
 		}
 		po.PODate = parseTimePtr(poDate)
@@ -181,13 +186,18 @@ func (s *Store) ListPurchaseOrders(ctx context.Context, vendorID string, limit, 
 
 func (s *Store) GetPurchaseOrder(ctx context.Context, id string) (domain.PurchaseOrder, []domain.QuotationLineItem, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id::text, po_number, COALESCE(rfq_id::text, ''), COALESCE(quotation_id::text, ''), COALESCE(vendor_id::text, ''), status, subtotal, gst_amount, grand_total, po_date, created_at, updated_at
-		FROM purchase_orders
-		WHERE id = $1::uuid AND deleted_at IS NULL
+		SELECT 
+			p.id::text, p.po_number, COALESCE(p.rfq_id::text, ''), COALESCE(p.quotation_id::text, ''), 
+			COALESCE(p.vendor_id::text, ''), p.status, p.subtotal, p.gst_amount, p.grand_total, p.po_date, 
+			p.created_at, p.updated_at, r.title as rfq_title, v.name as vendor_name
+		FROM purchase_orders p
+		INNER JOIN rfqs r ON r.id = p.rfq_id
+		INNER JOIN vendors v ON v.id = p.vendor_id
+		WHERE p.id = $1::uuid AND p.deleted_at IS NULL
 	`, id)
 	var po domain.PurchaseOrder
 	var poDate sql.NullTime
-	if err := row.Scan(&po.ID, &po.PONumber, &po.RFQID, &po.QuotationID, &po.VendorID, &po.Status, &po.Subtotal, &po.GSTAmount, &po.GrandTotal, &poDate, &po.CreatedAt, &po.UpdatedAt); err != nil {
+	if err := row.Scan(&po.ID, &po.PONumber, &po.RFQID, &po.QuotationID, &po.VendorID, &po.Status, &po.Subtotal, &po.GSTAmount, &po.GrandTotal, &poDate, &po.CreatedAt, &po.UpdatedAt, &po.RFQTitle, &po.VendorName); err != nil {
 		return domain.PurchaseOrder{}, nil, err
 	}
 	po.PODate = parseTimePtr(poDate)
@@ -223,18 +233,24 @@ func (s *Store) listPOLineItems(ctx context.Context, poID string) ([]domain.Quot
 
 func (s *Store) ListInvoices(ctx context.Context, vendorID string, limit, offset int) ([]domain.Invoice, error) {
 	query := `
-		SELECT id::text, invoice_number, po_id::text, COALESCE(vendor_id::text, ''), invoice_date, due_date, subtotal, gst_amount, grand_total, status, created_at, updated_at
-		FROM invoices
-		WHERE deleted_at IS NULL
+		SELECT 
+			i.id::text, i.invoice_number, i.po_id::text, COALESCE(i.vendor_id::text, ''), i.invoice_date, 
+			i.due_date, i.subtotal, i.gst_amount, i.grand_total, i.status, i.created_at, i.updated_at,
+			r.title as rfq_title, v.name as vendor_name
+		FROM invoices i
+		INNER JOIN purchase_orders p ON p.id = i.po_id
+		INNER JOIN rfqs r ON r.id = p.rfq_id
+		INNER JOIN vendors v ON v.id = i.vendor_id
+		WHERE i.deleted_at IS NULL
 	`
 	args := []any{}
 	idx := 1
 	if vendorID != "" {
-		query += fmt.Sprintf(" AND vendor_id = $%d::uuid", idx)
+		query += fmt.Sprintf(" AND i.vendor_id = $%d::uuid", idx)
 		args = append(args, vendorID)
 		idx++
 	}
-	query += " ORDER BY created_at DESC"
+	query += " ORDER BY i.created_at DESC"
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT $%d", idx)
 		args = append(args, limit)
@@ -255,7 +271,7 @@ func (s *Store) ListInvoices(ctx context.Context, vendorID string, limit, offset
 		var invoice domain.Invoice
 		var invoiceDate sql.NullTime
 		var invoiceDueDate sql.NullTime
-		if err := rows.Scan(&invoice.ID, &invoice.InvoiceNumber, &invoice.POID, &invoice.VendorID, &invoiceDate, &invoiceDueDate, &invoice.Subtotal, &invoice.GSTAmount, &invoice.GrandTotal, &invoice.Status, &invoice.CreatedAt, &invoice.UpdatedAt); err != nil {
+		if err := rows.Scan(&invoice.ID, &invoice.InvoiceNumber, &invoice.POID, &invoice.VendorID, &invoiceDate, &invoiceDueDate, &invoice.Subtotal, &invoice.GSTAmount, &invoice.GrandTotal, &invoice.Status, &invoice.CreatedAt, &invoice.UpdatedAt, &invoice.RFQTitle, &invoice.VendorName); err != nil {
 			return nil, err
 		}
 		invoice.InvoiceDate = parseTimePtr(invoiceDate)
@@ -267,14 +283,20 @@ func (s *Store) ListInvoices(ctx context.Context, vendorID string, limit, offset
 
 func (s *Store) GetInvoice(ctx context.Context, id string) (domain.Invoice, []domain.QuotationLineItem, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id::text, invoice_number, po_id::text, COALESCE(vendor_id::text, ''), invoice_date, due_date, subtotal, gst_amount, grand_total, status, created_at, updated_at
-		FROM invoices
-		WHERE id = $1::uuid AND deleted_at IS NULL
+		SELECT 
+			i.id::text, i.invoice_number, i.po_id::text, COALESCE(i.vendor_id::text, ''), i.invoice_date, 
+			i.due_date, i.subtotal, i.gst_amount, i.grand_total, i.status, i.created_at, i.updated_at,
+			r.title as rfq_title, v.name as vendor_name
+		FROM invoices i
+		INNER JOIN purchase_orders p ON p.id = i.po_id
+		INNER JOIN rfqs r ON r.id = p.rfq_id
+		INNER JOIN vendors v ON v.id = i.vendor_id
+		WHERE i.id = $1::uuid AND i.deleted_at IS NULL
 	`, id)
 	var invoice domain.Invoice
 	var invoiceDate sql.NullTime
 	var invoiceDueDate sql.NullTime
-	if err := row.Scan(&invoice.ID, &invoice.InvoiceNumber, &invoice.POID, &invoice.VendorID, &invoiceDate, &invoiceDueDate, &invoice.Subtotal, &invoice.GSTAmount, &invoice.GrandTotal, &invoice.Status, &invoice.CreatedAt, &invoice.UpdatedAt); err != nil {
+	if err := row.Scan(&invoice.ID, &invoice.InvoiceNumber, &invoice.POID, &invoice.VendorID, &invoiceDate, &invoiceDueDate, &invoice.Subtotal, &invoice.GSTAmount, &invoice.GrandTotal, &invoice.Status, &invoice.CreatedAt, &invoice.UpdatedAt, &invoice.RFQTitle, &invoice.VendorName); err != nil {
 		return domain.Invoice{}, nil, err
 	}
 	invoice.InvoiceDate = parseTimePtr(invoiceDate)

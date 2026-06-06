@@ -17,7 +17,7 @@ export function ApprovalsPage() {
   async function load() {
     setLoading(true);
     try {
-      const items = await apiFetch<Approval[]>('/approvals');
+      const items = await apiFetch<Approval[]>('/approvals?status=pending');
       setApprovals(items);
       setSelectedId((current) => current || items[0]?.id || '');
     } finally {
@@ -60,8 +60,9 @@ export function ApprovalsPage() {
                 >
                   <div className="data-card__header">
                     <div>
-                      <strong className="data-card__title">Level: {approval.level}</strong>
-                      <div className="muted small">Ref: {approval.quotation_id.split('-')[0]}...</div>
+                      <strong className="data-card__title">{approval.rfq_title}</strong>
+                      <div className="activity-desc" style={{ fontSize: '0.85rem' }}>{approval.vendor_name}</div>
+                      <div className="muted small">Stage: {approval.level}</div>
                     </div>
                     <Badge tone={statusTone(approval.status)}>{approval.status}</Badge>
                   </div>
@@ -79,7 +80,7 @@ export function ApprovalsPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Decision Panel" subtitle={selected ? `Reviewing Level ${selected.level}` : 'Select a request to decide.'}>
+        <SectionCard title="Decision Panel" subtitle={selected ? `Reviewing RFQ: ${selected.rfq_title}` : 'Select a request to decide.'}>
           {selected ? (
             <div className="modern-form">
               <div className="form-group-section">

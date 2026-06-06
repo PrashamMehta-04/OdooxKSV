@@ -28,7 +28,7 @@ export function Sidebar({ current, onNavigate }: { current: RouteKey; onNavigate
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <div className="brand-mark">VB</div>
+        <img src="/logo.svg" alt="VB" className="brand-mark" />
         <div>
           <div className="brand-title">VendorBridge</div>
           <div className="brand-subtitle">Procurement ERP</div>

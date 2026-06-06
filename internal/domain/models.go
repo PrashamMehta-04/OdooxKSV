@@ -87,6 +87,8 @@ type QuotationLineItem struct {
 type Approval struct {
 	ID          string     `json:"id"`
 	QuotationID string     `json:"quotation_id"`
+	RFQTitle    string     `json:"rfq_title,omitempty"`
+	VendorName  string     `json:"vendor_name,omitempty"`
 	ApproverID  string     `json:"approver_id,omitempty"`
 	Level       string     `json:"level"`
 	Status      string     `json:"status"`
@@ -100,8 +102,10 @@ type PurchaseOrder struct {
 	ID          string     `json:"id"`
 	PONumber    string     `json:"po_number"`
 	RFQID       string     `json:"rfq_id,omitempty"`
+	RFQTitle    string     `json:"rfq_title,omitempty"`
 	QuotationID string     `json:"quotation_id,omitempty"`
 	VendorID    string     `json:"vendor_id,omitempty"`
+	VendorName  string     `json:"vendor_name,omitempty"`
 	Status      string     `json:"status"`
 	Subtotal    float64    `json:"subtotal"`
 	GSTAmount   float64    `json:"gst_amount"`
@@ -115,7 +119,9 @@ type Invoice struct {
 	ID            string     `json:"id"`
 	InvoiceNumber string     `json:"invoice_number"`
 	POID          string     `json:"po_id"`
+	RFQTitle      string     `json:"rfq_title,omitempty"`
 	VendorID      string     `json:"vendor_id,omitempty"`
+	VendorName    string     `json:"vendor_name,omitempty"`
 	InvoiceDate   *time.Time `json:"invoice_date,omitempty"`
 	DueDate       *time.Time `json:"due_date,omitempty"`
 	Subtotal      float64    `json:"subtotal"`

@@ -28,7 +28,7 @@ export function LoginPage() {
     <div className="auth-layout--simple">
       <div className="centered-container">
         <div className="logo-large">
-          <div className="brand-mark">VB</div>
+          <img src="/logo.svg" alt="VB" className="brand-mark" style={{ width: '80px', height: '80px' }} />
           <h1>VendorBridge</h1>
         </div>
 

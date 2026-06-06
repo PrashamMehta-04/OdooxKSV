@@ -83,11 +83,13 @@ export type Quotation = {
 export type Approval = {
   id: string;
   quotation_id: string;
+  rfq_title?: string;
+  vendor_name?: string;
   approver_id?: string;
   level: string;
   status: string;
   remarks?: string;
-  approved_at?: string | null;
+  approved_at?: string;
   created_at: string;
   updated_at: string;
 };

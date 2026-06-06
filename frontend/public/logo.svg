@@ -1,0 +1,43 @@
+<svg width="256" height="256" viewBox="0 0 256 256" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>VendorBridge icon</title>
+  <desc>VendorBridge app icon - stylized bridge with vendor and ERP connection nodes</desc>
+
+  <!-- Background card -->
+  <rect x="0" y="0" width="256" height="256" rx="48" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- Bridge arc (main arch) -->
+  <path d="M 52 168 Q 128 72 204 168" fill="none" stroke="#3B82F6" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Bridge deck -->
+  <line x1="36" y1="168" x2="220" y2="168" stroke="#3B82F6" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Bridge verticals (suspenders) -->
+  <line x1="90"  y1="168" x2="84"  y2="122" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="128" y1="168" x2="128" y2="96"  stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/>
+  <line x1="166" y1="168" x2="172" y2="122" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Left tower -->
+  <rect x="44" y="138" width="16" height="36" rx="3" fill="#2563EB"/>
+  <!-- Right tower -->
+  <rect x="196" y="138" width="16" height="36" rx="3" fill="#2563EB"/>
+
+  <!-- Node circles on deck -->
+  <circle cx="52"  cy="168" r="8"   fill="#60A5FA" stroke="#2563EB" stroke-width="2"/>
+  <circle cx="90"  cy="168" r="6.5" fill="#93C5FD" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="128" cy="168" r="8"   fill="#60A5FA" stroke="#2563EB" stroke-width="2"/>
+  <circle cx="166" cy="168" r="6.5" fill="#93C5FD" stroke="#3B82F6" stroke-width="2"/>
+  <circle cx="204" cy="168" r="8"   fill="#60A5FA" stroke="#2563EB" stroke-width="2"/>
+
+  <!-- Left vendor nodes -->
+  <circle cx="20" cy="145" r="6" fill="#10B981" stroke="#059669" stroke-width="2"/>
+  <line x1="26" y1="146" x2="43" y2="161" stroke="#10B981" stroke-width="2" stroke-dasharray="4 3"/>
+  <circle cx="20" cy="177" r="6" fill="#10B981" stroke="#059669" stroke-width="2"/>
+  <line x1="26" y1="175" x2="43" y2="169" stroke="#10B981" stroke-width="2" stroke-dasharray="4 3"/>
+
+  <!-- Right ERP nodes -->
+  <circle cx="236" cy="145" r="6" fill="#F59E0B" stroke="#D97706" stroke-width="2"/>
+  <line x1="230" y1="146" x2="213" y2="161" stroke="#F59E0B" stroke-width="2" stroke-dasharray="4 3"/>
+  <circle cx="236" cy="177" r="6" fill="#F59E0B" stroke="#D97706" stroke-width="2"/>
+  <line x1="230" y1="175" x2="213" y2="169" stroke="#F59E0B" stroke-width="2" stroke-dasharray="4 3"/>
+
+</svg>

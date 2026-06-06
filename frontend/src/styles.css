@@ -170,8 +170,26 @@ a {
 
 .app-main__content {
   display: grid;
-  gap: 24px;
-  padding: 30px;
+  gap: 32px;
+  padding: 40px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 32px;
+}
+
+.two-col--wide {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 1024px) {
+  .two-col, .two-col--wide {
+    grid-template-columns: 1fr;
+  }
 }
 
 .topbar {
@@ -318,9 +336,9 @@ a {
 }
 
 .stat-card {
-  padding: 20px;
+  padding: 24px;
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .stat-card__value {
@@ -337,7 +355,7 @@ a {
 }
 
 .card {
-  padding: 25px;
+  padding: 32px;
 }
 
 .card__header {
