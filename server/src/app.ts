@@ -12,6 +12,9 @@ import { vendorsRouter } from "./vendors/vendors.routes.js";
 import { rfqsRouter } from "./rfqs/rfqs.routes.js";
 import { quotationsRouter } from "./quotations/quotations.routes.js";
 import { approvalsRouter } from "./approvals/approvals.routes.js";
+import { posRouter } from "./pos/pos.routes.js";
+import { invoicesRouter } from "./invoices/invoices.routes.js";
+import { activityRouter } from "./activity/activity.routes.js";
 
 export const app = express();
 
@@ -60,3 +63,6 @@ app.use("/api/vendors", vendorsRouter);
 app.use("/api/rfqs", rfqsRouter);
 app.use("/api/quotations", quotationsRouter);
 app.use("/api/approvals", approvalsRouter);
+app.use("/api/pos", posRouter);
+app.use("/api/invoices", invoicesRouter);
+app.use("/api/activity", activityRouter);

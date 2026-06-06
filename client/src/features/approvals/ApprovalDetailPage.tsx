@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Clock, FileText, XCircle } from "lucide-react";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AppShell, StatusBadge, formatDate } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -39,7 +39,8 @@ interface ApprovalDetails {
 
 export function ApprovalDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   
   const [remarks, setRemarks] = useState("");
@@ -250,11 +251,26 @@ export function ApprovalDetailPage() {
               {approval.status === "APPROVED" ? (
                 <div>
                    <p className="text-sm text-muted-foreground mb-4">
-                     This quotation has been approved! The Procurement Officer can now convert it into a Purchase Order.
+                     This quotation has been approved!
                    </p>
-                   <Link to="/procurement/invoices" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-                     <FileText className="h-4 w-4" /> Go to Purchase Orders
-                   </Link>
+                   {user?.role === "PROCUREMENT_OFFICER" ? (
+                     <button
+                       onClick={() => {
+                         apiRequest("/pos", {
+                           method: "POST",
+                           headers: { Authorization: `Bearer ${accessToken}` },
+                           body: JSON.stringify({ rfqId: approval.rfqId, taxRate: 18 }) // Default 18% tax for demo
+                         }).then((res: any) => navigate(`/pos/${res.id}`)).catch((err: any) => alert(err.message));
+                       }}
+                       className="w-full flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                     >
+                       <FileText className="h-4 w-4" /> Generate Purchase Order
+                     </button>
+                   ) : (
+                     <Link to="/pos" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+                       <FileText className="h-4 w-4" /> View Purchase Orders
+                     </Link>
+                   )}
                 </div>
               ) : approval.status === "REJECTED" ? (
                 <p className="text-sm text-muted-foreground">

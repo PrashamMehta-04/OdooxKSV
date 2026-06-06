@@ -40,6 +40,9 @@ import { RfqDetailPage } from "./features/rfqs/RfqDetailPage";
 import { QuotationComparisonPage } from "./features/quotations/QuotationComparisonPage";
 import { ApprovalsPage } from "./features/approvals/ApprovalsPage";
 import { ApprovalDetailPage } from "./features/approvals/ApprovalDetailPage";
+import { PosPage } from "./features/pos/PosPage";
+import { PoDetailPage } from "./features/pos/PoDetailPage";
+import { ActivityPage } from "./features/activity/ActivityPage";
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
@@ -81,14 +84,14 @@ const modules: Array<{
     description: "Route selected quotations through manager approval with timeline remarks.",
     path: "/approvals",
     icon: ShieldCheck,
-    roles: ["MANAGER"]
+    roles: ["MANAGER", "PROCUREMENT_OFFICER", "ADMIN"]
   },
   {
-    title: "Invoices",
+    title: "Orders & Invoices",
     description: "Generate purchase orders, invoices, printable documents, and email actions.",
-    path: "/procurement/invoices",
+    path: "/pos",
     icon: FileText,
-    roles: ["PROCUREMENT_OFFICER"]
+    roles: ["PROCUREMENT_OFFICER", "VENDOR"]
   },
   {
     title: "Activity",
@@ -215,16 +218,17 @@ export function App() {
           </Route>
 
           <Route
-            element={<ProtectedRoute roles={["PROCUREMENT_OFFICER"]} />}
-            path="/procurement/invoices"
+            element={<ProtectedRoute roles={["PROCUREMENT_OFFICER", "VENDOR", "ADMIN"]} />}
+            path="/pos"
           >
-            <Route index element={<RoleModulePage title="Invoices" icon={FileText} />} />
+            <Route index element={<PosPage />} />
+            <Route path=":id" element={<PoDetailPage />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["ADMIN", "PROCUREMENT_OFFICER", "MANAGER"]} />}
             path="/activity"
           >
-            <Route index element={<RoleModulePage title="Activity" icon={Activity} />} />
+            <Route index element={<ActivityPage />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["ADMIN"]} />}
@@ -1084,7 +1088,7 @@ function quickActions(role: Role) {
     return [
       { title: "Create RFQ", caption: "Start a procurement request", path: "/procurement/rfqs", icon: Plus },
       { title: "Compare quotes", caption: "Move selected vendors forward", path: "/procurement/rfqs", icon: CheckCircle2 },
-      { title: "Generate invoice", caption: "Prepare billing documents", path: "/procurement/invoices", icon: FileText }
+      { title: "Orders & Invoices", caption: "Prepare billing documents", path: "/pos", icon: FileText }
     ];
   }
 
