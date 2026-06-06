@@ -71,7 +71,7 @@ Then open **http://localhost:5173** in your browser.
 | Admin                | admin@vendorbridge.com      | Admin@123    |
 | Manager / Approver   | manager@vendorbridge.com    | Manager@123  |
 | Procurement Officer  | officer@vendorbridge.com    | Officer@123  |
-| Vendor               | vendor1@techsupplies.com    | Vendor@123   |
+| Vendor               | rahul@techsupply.com        | Vendor@123   |
 
 ---
 
@@ -135,7 +135,7 @@ OdooxKSV/
 
 ## Email Configuration (optional)
 
-To enable invoice emailing, add your SMTP credentials to `backend/.env`:
+To enable invoice emailing and password-reset OTP emails, add your SMTP credentials to `backend/.env`:
 
 ```
 SMTP_HOST=smtp.gmail.com

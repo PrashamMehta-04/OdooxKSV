@@ -14,6 +14,8 @@ model User {
   name      String
   role      String   @default("procurement_officer") // admin | procurement_officer | vendor | manager
   vendorId  String? // if role=vendor, link to Vendor
+  otp       String?
+  otpExpiry DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

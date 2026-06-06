@@ -15,7 +15,7 @@ import dashboardRoutes from './routes/dashboard';
 import reportRoutes from './routes/reports';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: '*', credentials: true }));
