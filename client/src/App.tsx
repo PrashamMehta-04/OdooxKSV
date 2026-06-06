@@ -43,6 +43,7 @@ import { ApprovalDetailPage } from "./features/approvals/ApprovalDetailPage";
 import { PosPage } from "./features/pos/PosPage";
 import { PoDetailPage } from "./features/pos/PoDetailPage";
 import { ActivityPage } from "./features/activity/ActivityPage";
+import { ReportsPage } from "./features/reports/ReportsPage";
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
@@ -102,10 +103,10 @@ const modules: Array<{
   },
   {
     title: "Reports",
-    description: "Review vendor performance, spending summaries, and monthly trends.",
+    description: "Visualize spending trends, vendor performance, and RFQ analytics.",
     path: "/reports",
     icon: BarChart3,
-    roles: ["ADMIN"]
+    roles: ["ADMIN", "MANAGER"]
   },
   {
     title: "Vendor RFQs",
@@ -231,10 +232,10 @@ export function App() {
             <Route index element={<ActivityPage />} />
           </Route>
           <Route
-            element={<ProtectedRoute roles={["ADMIN"]} />}
+            element={<ProtectedRoute roles={["ADMIN", "MANAGER"]} />}
             path="/reports"
           >
-            <Route index element={<RoleModulePage title="Reports" icon={BarChart3} />} />
+            <Route index element={<ReportsPage />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["MANAGER"]} />}
@@ -588,11 +589,11 @@ export function AppShell({ children, title, eyebrow }: { children: ReactNode; ti
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-border bg-card lg:block">
+        <aside className="hidden w-72 shrink-0 border-r border-border bg-card lg:block print:hidden">
           <SidebarContent modules={accessibleModules} />
         </aside>
         {isMobileNavOpen ? (
-          <div className="fixed inset-0 z-40 bg-foreground/20 lg:hidden">
+          <div className="fixed inset-0 z-40 bg-foreground/20 lg:hidden print:hidden">
             <div className="h-full w-72 border-r border-border bg-card">
               <div className="flex items-center justify-between border-b border-border px-4 py-4">
                 <span className="text-sm font-semibold text-primary">VendorBridge</span>
@@ -609,8 +610,8 @@ export function AppShell({ children, title, eyebrow }: { children: ReactNode; ti
             </div>
           </div>
         ) : null}
-        <section className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
+        <section className="min-w-0 flex-1 print:bg-white print:text-black">
+          <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur print:hidden">
             <div className="flex min-h-16 items-center gap-4 px-4 md:px-6">
               <button
                 aria-label="Open navigation"
@@ -1095,8 +1096,8 @@ function quickActions(role: Role) {
   if (role === "MANAGER") {
     return [
       { title: "Review approvals", caption: "Approve or reject requests", path: "/approvals", icon: ShieldCheck },
-      { title: "Check activity", caption: "See recent procurement updates", path: "/activity", icon: Activity },
-      { title: "View RFQ status", caption: "Monitor active workflows", path: "/", icon: ClipboardList }
+      { title: "Open reports", caption: "Track procurement spend", path: "/reports", icon: BarChart3 },
+      { title: "Check activity", caption: "See recent procurement updates", path: "/activity", icon: Activity }
     ];
   }
 

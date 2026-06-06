@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Clock, FileText, Package, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell, StatusBadge, formatDate } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -93,6 +94,7 @@ export function RfqDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations", "rfq", id] });
       queryClient.invalidateQueries({ queryKey: ["rfqs", id] });
+      toast.success(isEditing ? "Quotation updated successfully" : "Quotation submitted successfully");
       setIsEditing(false);
       setError("");
     },

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, FileText, Download } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell, StatusBadge, formatDate } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -71,6 +72,7 @@ export function PoDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["pos", id] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       setError("");
+      toast.success("Invoice submitted successfully");
     },
     onError: (err: any) => {
       setError(err.message || "Failed to submit invoice.");
@@ -88,6 +90,7 @@ export function PoDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pos", id] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Payment processed successfully");
     }
   });
 

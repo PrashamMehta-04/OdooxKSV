@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -58,6 +59,7 @@ export function RfqCreationPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rfqs"] });
+      toast.success("RFQ created successfully");
       navigate("/procurement/rfqs");
     },
     onError: (err: any) => {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Clock, DollarSign, Star, TrendingDown, Truck } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell, StatusBadge } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -79,6 +80,7 @@ export function QuotationComparisonPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rfqs", id] });
       queryClient.invalidateQueries({ queryKey: ["quotations", "rfq", id] });
+      toast.success("Quotation selected and sent for approval");
       navigate(`/procurement/rfqs/${id}`);
     },
     onError: (err: any) => {

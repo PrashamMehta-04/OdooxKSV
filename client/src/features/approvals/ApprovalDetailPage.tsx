@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle, Clock, FileText, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell, StatusBadge, formatDate } from "../../App";
 import { useAuth } from "../../auth/auth-context";
 import { apiRequest } from "../../lib/api";
@@ -66,6 +67,7 @@ export function ApprovalDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approvals", id] });
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      toast.success("Decision recorded successfully");
       // We stay on the page to view the updated status/timeline
     },
     onError: (err: any) => {
@@ -260,7 +262,10 @@ export function ApprovalDetailPage() {
                            method: "POST",
                            headers: { Authorization: `Bearer ${accessToken}` },
                            body: JSON.stringify({ rfqId: approval.rfqId, taxRate: 18 }) // Default 18% tax for demo
-                         }).then((res: any) => navigate(`/pos/${res.id}`)).catch((err: any) => alert(err.message));
+                          }).then((res: any) => {
+                            toast.success("Purchase Order generated successfully");
+                            navigate(`/pos/${res.id}`);
+                          }).catch((err: any) => toast.error(err.message));
                        }}
                        className="w-full flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                      >
