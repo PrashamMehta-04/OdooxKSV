@@ -27,6 +27,7 @@ async function main() {
       status: "active",
       contactPerson: "Rahul Sharma",
       address: "42 Tech Park, Pune, Maharashtra 411001",
+      rating: 4.5,
     },
   });
 
@@ -40,6 +41,7 @@ async function main() {
       status: "active",
       contactPerson: "Priya Patel",
       address: "15 Commercial Street, Bengaluru, Karnataka 560001",
+      rating: 4.2,
     },
   });
 
@@ -53,6 +55,7 @@ async function main() {
       status: "active",
       contactPerson: "Amit Verma",
       address: "Plot 8, Industrial Area Phase II, Noida, UP 201301",
+      rating: 3.8,
     },
   });
 

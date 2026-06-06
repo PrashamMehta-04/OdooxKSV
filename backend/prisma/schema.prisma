@@ -34,6 +34,7 @@ model Vendor {
   status        String   @default("active") // active | inactive | blacklisted
   contactPerson String
   address       String?
+  rating        Float    @default(0.0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -43,14 +44,15 @@ model Vendor {
 }
 
 model Rfq {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  deadline    DateTime
-  status      String   @default("draft") // draft | sent | closed | cancelled
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  deadline      DateTime
+  status        String   @default("draft") // draft | sent | closed | cancelled
+  attachmentUrl String?
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   createdBy  User        @relation(fields: [createdById], references: [id])
   items      RfqItem[]
