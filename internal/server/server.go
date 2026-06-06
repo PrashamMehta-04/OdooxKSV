@@ -54,6 +54,9 @@ func (s *Server) Router() http.Handler {
 		r.Get("/auth/me", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, nil, s.handleMe)
 		})
+		r.Patch("/auth/me", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, nil, s.handleUpdateMe)
+		})
 		r.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRolesAny(), s.handleDashboard)
 		})
@@ -135,8 +138,17 @@ func (s *Server) Router() http.Handler {
 		r.Get("/activity", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleListActivity)
 		})
+		r.Get("/notifications", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRolesAny(), s.handleListNotifications)
+		})
+		r.Post("/notifications/{id}/read", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRolesAny(), s.handleReadNotification)
+		})
 		r.Get("/reports/spend-trend", func(w http.ResponseWriter, r *http.Request) {
 			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleSpendTrend)
+		})
+		r.Get("/reports/stats", func(w http.ResponseWriter, r *http.Request) {
+			s.withAuth(w, r, allowedRoles("admin", "officer", "procurement_head", "finance_manager"), s.handleReportsStats)
 		})
 
 		// User Management (Admin only)
@@ -180,6 +192,26 @@ func (s *Server) handleAdminOnly(next authHandlerFunc) authHandlerFunc {
 		}
 		next(w, r, ac)
 	}
+}
+
+func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, ac authContext) {
+	var params store.UpdateUserParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Security: Do not allow users to change their own role via this endpoint
+	params.Role = nil
+
+	user, err := s.store.UpdateUser(r.Context(), ac.Claims.UserID, params)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	_ = s.store.InsertActivity(r.Context(), ac.Claims.UserID, "user", user.ID, "user.updated_self", nil)
+	writeJSON(w, http.StatusOK, user)
 }
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request, ac authContext) {
@@ -392,12 +424,23 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, ac authContext
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, ac authContext) {
-	metrics, err := s.store.GetDashboardMetrics(r.Context())
+	var vendorID string
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				vendorID = vendor.ID
+			}
+		}
+	}
+
+	metrics, err := s.store.GetDashboardMetrics(r.Context(), vendorID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	trend, err := s.store.GetSpendTrend(r.Context(), parseIntQuery(r, "months", 6))
+	trend, err := s.store.GetSpendTrend(r.Context(), parseIntQuery(r, "months", 6), vendorID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -898,8 +941,58 @@ func (s *Server) handleListActivity(w http.ResponseWriter, r *http.Request, ac a
 	writeJSON(w, http.StatusOK, items)
 }
 
+func (s *Server) handleListNotifications(w http.ResponseWriter, r *http.Request, ac authContext) {
+	items, err := s.store.ListNotifications(r.Context(), ac.Claims.UserID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (s *Server) handleReadNotification(w http.ResponseWriter, r *http.Request, ac authContext) {
+	id := chi.URLParam(r, "id")
+	if id == "all" {
+		_ = s.store.MarkAllNotificationsRead(r.Context(), ac.Claims.UserID)
+	} else {
+		_ = s.store.MarkNotificationRead(r.Context(), id, ac.Claims.UserID)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleReportsStats(w http.ResponseWriter, r *http.Request, ac authContext) {
+	var vendorID string
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				vendorID = vendor.ID
+			}
+		}
+	}
+
+	stats, err := s.store.GetProcurementStats(r.Context(), vendorID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}
+
 func (s *Server) handleSpendTrend(w http.ResponseWriter, r *http.Request, ac authContext) {
-	items, err := s.store.GetSpendTrend(r.Context(), parseIntQuery(r, "months", 6))
+	var vendorID string
+	if strings.ToLower(ac.Claims.Role) == "vendor" {
+		user, err := s.store.GetUserByID(r.Context(), ac.Claims.UserID)
+		if err == nil {
+			vendor, err := s.store.GetVendorByEmail(r.Context(), user.Email)
+			if err == nil {
+				vendorID = vendor.ID
+			}
+		}
+	}
+
+	items, err := s.store.GetSpendTrend(r.Context(), parseIntQuery(r, "months", 6), vendorID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return

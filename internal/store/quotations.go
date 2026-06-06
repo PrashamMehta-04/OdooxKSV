@@ -53,6 +53,7 @@ func (s *Store) CreateQuotation(ctx context.Context, req CreateQuotationRequest,
 		if err := insertQuotationLineItems(ctx, tx, q.ID, req.LineItems); err != nil {
 			return err
 		}
+		_ = s.NotifyRoleTx(ctx, tx, "officer", "New Quotation", "A vendor has submitted a quotation for an RFQ.", "quotations")
 		return s.insertActivity(ctx, tx, actorID, "quotation", q.ID, "quotation.submitted", map[string]any{"rfq_id": q.RFQID, "vendor_id": q.VendorID, "amount": q.TotalAmount})
 	})
 	return q, err

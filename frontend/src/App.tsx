@@ -17,6 +17,7 @@ import { VendorSubmissionsPage } from './pages/VendorSubmissionsPage';
 import { UsersPage } from './pages/UsersPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function AppContent() {
@@ -24,6 +25,9 @@ function AppContent() {
   const { user, ready } = useAuth();
 
   useEffect(() => {
+    // Close mobile sidebar on navigation
+    document.body.classList.remove('sidebar-open');
+    
     if (!ready) return;
     if (!user && route !== 'login' && route !== 'register') {
       navigate('login');
@@ -69,6 +73,8 @@ function AppContent() {
         return <ForgotPasswordPage />;
       case 'reset-password':
         return <ResetPasswordPage />;
+      case 'profile':
+        return <ProfilePage />;
       case 'login':
       case 'register':
         return null;

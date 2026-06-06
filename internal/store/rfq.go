@@ -70,7 +70,7 @@ func (s *Store) CreateRFQ(ctx context.Context, req RFQCreateRequest, actorID str
 		if err := insertRFQLineItems(ctx, tx, rfq.ID, req.LineItems); err != nil {
 			return err
 		}
-		if err := insertRFQVendors(ctx, tx, rfq.ID, req.VendorIDs); err != nil {
+		if err := s.insertRFQVendors(ctx, tx, rfq.ID, req.VendorIDs); err != nil {
 			return err
 		}
 		if err := insertRFQAttachments(ctx, tx, rfq.ID, req.Attachments); err != nil {
@@ -186,7 +186,7 @@ func (s *Store) AddRFQLineItems(ctx context.Context, rfqID string, items []RFQLi
 
 func (s *Store) AssignRFQVendors(ctx context.Context, rfqID string, vendorIDs []string, actorID string) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := insertRFQVendors(ctx, tx, rfqID, vendorIDs); err != nil {
+		if err := s.insertRFQVendors(ctx, tx, rfqID, vendorIDs); err != nil {
 			return err
 		}
 		return s.insertActivity(ctx, tx, actorID, "rfq", rfqID, "rfq.vendors.assigned", map[string]any{"count": len(vendorIDs)})
@@ -214,16 +214,18 @@ func insertRFQLineItems(ctx context.Context, tx *sql.Tx, rfqID string, items []R
 	return nil
 }
 
-func insertRFQVendors(ctx context.Context, tx *sql.Tx, rfqID string, vendorIDs []string) error {
-	for _, vendorID := range vendorIDs {
+func (s *Store) insertRFQVendors(ctx context.Context, tx *sql.Tx, rfqID string, vendorIDs []string) error {
+	for _, vid := range vendorIDs {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO rfq_vendor_assignments (rfq_id, vendor_id)
 			VALUES ($1::uuid, $2::uuid)
 			ON CONFLICT DO NOTHING
-		`, rfqID, vendorID); err != nil {
+		`, rfqID, vid); err != nil {
 			return err
 		}
+		_ = s.NotifyVendorTx(ctx, tx, vid, "New RFQ Assigned", "You have been invited to participate in a new RFQ.", "vendor-submissions")
 	}
+
 	return nil
 }
 

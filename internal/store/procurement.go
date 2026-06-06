@@ -349,32 +349,138 @@ func (s *Store) MarkInvoiceSent(ctx context.Context, id, actorID string) (domain
 	return invoice, nil
 }
 
-func (s *Store) GetDashboardMetrics(ctx context.Context) (domain.DashboardMetrics, error) {
+func (s *Store) GetDashboardMetrics(ctx context.Context, vendorID string) (domain.DashboardMetrics, error) {
 	var metrics domain.DashboardMetrics
+	
+	args := []any{}
+	invoiceWhere := "WHERE deleted_at IS NULL"
+	rfqWhere := "WHERE deleted_at IS NULL AND status IN ('draft', 'submitted', 'selected', 'approved')"
+	approvalWhere := "WHERE status = 'pending'"
+	poWhere := "WHERE deleted_at IS NULL AND date_trunc('month', created_at) = date_trunc('month', NOW())"
+
+	if vendorID != "" {
+		invoiceWhere += " AND vendor_id = $1::uuid"
+		rfqWhere += " AND id IN (SELECT rfq_id FROM rfq_vendor_assignments WHERE vendor_id = $1::uuid)"
+		approvalWhere += " AND quotation_id IN (SELECT id FROM quotations WHERE vendor_id = $1::uuid)"
+		poWhere += " AND vendor_id = $1::uuid"
+		args = append(args, vendorID)
+	}
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT
-			COALESCE((SELECT SUM(grand_total) FROM invoices WHERE deleted_at IS NULL), 0),
-			COALESCE((SELECT COUNT(*) FROM rfqs WHERE deleted_at IS NULL AND status IN ('draft', 'submitted', 'selected', 'approved')), 0),
-			COALESCE((SELECT COUNT(*) FROM approvals WHERE status = 'pending'), 0),
-			COALESCE((SELECT COUNT(*) FROM purchase_orders WHERE deleted_at IS NULL AND date_trunc('month', created_at) = date_trunc('month', NOW())), 0),
-			COALESCE((SELECT COUNT(*) FROM invoices WHERE deleted_at IS NULL AND due_date < CURRENT_DATE AND status <> 'paid'), 0)
-	`).Scan(&metrics.TotalSpend, &metrics.ActiveRFQs, &metrics.PendingApprovals, &metrics.POsThisMonth, &metrics.OverdueInvoices)
+			COALESCE((SELECT SUM(grand_total) FROM invoices ` + invoiceWhere + `), 0),
+			COALESCE((SELECT COUNT(*) FROM rfqs ` + rfqWhere + `), 0),
+			COALESCE((SELECT COUNT(*) FROM approvals ` + approvalWhere + `), 0),
+			COALESCE((SELECT COUNT(*) FROM purchase_orders ` + poWhere + `), 0),
+			COALESCE((SELECT COUNT(*) FROM invoices ` + invoiceWhere + ` AND due_date < CURRENT_DATE AND status <> 'paid'), 0)
+	`, args...).Scan(&metrics.TotalSpend, &metrics.ActiveRFQs, &metrics.PendingApprovals, &metrics.POsThisMonth, &metrics.OverdueInvoices)
 	return metrics, err
 }
 
-func (s *Store) GetSpendTrend(ctx context.Context, months int) ([]domain.SpendTrendPoint, error) {
+func (s *Store) GetProcurementStats(ctx context.Context, vendorID string) (domain.ProcurementStats, error) {
+	var stats domain.ProcurementStats
+	args := []any{}
+	rfqWhere := "WHERE deleted_at IS NULL"
+	qWhere := "WHERE deleted_at IS NULL"
+	poWhere := "WHERE deleted_at IS NULL"
+	invWhere := "WHERE status = 'paid'"
+
+	if vendorID != "" {
+		rfqWhere += " AND id IN (SELECT rfq_id FROM rfq_vendor_assignments WHERE vendor_id = $1::uuid)"
+		qWhere += " AND vendor_id = $1::uuid"
+		poWhere += " AND vendor_id = $1::uuid"
+		invWhere += " AND vendor_id = $1::uuid"
+		args = append(args, vendorID)
+	}
+
+	// 1. Basic Counts
+	err := s.db.QueryRowContext(ctx, `
+		SELECT 
+			(SELECT COUNT(*) FROM rfqs ` + rfqWhere + `),
+			(SELECT COUNT(*) FROM quotations ` + qWhere + `),
+			(SELECT COUNT(*) FROM purchase_orders ` + poWhere + `),
+			COALESCE((SELECT SUM(grand_total) FROM invoices ` + invWhere + `), 0),
+			COALESCE((SELECT AVG(total_amount) FROM quotations ` + qWhere + `), 0)
+	`, args...).Scan(&stats.TotalRFQs, &stats.TotalQuotations, &stats.TotalPOs, &stats.TotalSpend, &stats.AvgQuoteAmount)
+	if err != nil {
+		return stats, err
+	}
+
+	// 2. Category Spend
+	categoryQuery := `
+		SELECT COALESCE(r.category, 'Uncategorized'), SUM(p.grand_total)
+		FROM purchase_orders p
+		INNER JOIN rfqs r ON r.id = p.rfq_id
+		WHERE p.deleted_at IS NULL
+	`
+	if vendorID != "" {
+		categoryQuery += " AND p.vendor_id = $1::uuid"
+	}
+	categoryQuery += " GROUP BY r.category ORDER BY SUM(p.grand_total) DESC"
+
+	rows, err := s.db.QueryContext(ctx, categoryQuery, args...)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var cs domain.CategorySpend
+			if err := rows.Scan(&cs.Category, &cs.Amount); err == nil {
+				stats.CategorySpend = append(stats.CategorySpend, cs)
+			}
+		}
+	}
+
+	// 3. Vendor Performance
+	vendorQuery := `
+		SELECT 
+			v.id::text, v.name,
+			COUNT(q.id) as quotes_count,
+			COUNT(CASE WHEN q.selected = TRUE THEN 1 END) as awarded_count,
+			COALESCE(AVG(q.delivery_days), 0) as avg_delivery,
+			COALESCE(SUM(p.grand_total), 0) as total_revenue
+		FROM vendors v
+		LEFT JOIN quotations q ON q.vendor_id = v.id AND q.deleted_at IS NULL
+		LEFT JOIN purchase_orders p ON p.quotation_id = q.id AND p.deleted_at IS NULL
+		WHERE v.deleted_at IS NULL
+	`
+	if vendorID != "" {
+		vendorQuery += " AND v.id = $1::uuid"
+	}
+	vendorQuery += " GROUP BY v.id, v.name ORDER BY total_revenue DESC LIMIT 10"
+
+	rows, err = s.db.QueryContext(ctx, vendorQuery, args...)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var vs domain.VendorStats
+			if err := rows.Scan(&vs.ID, &vs.Name, &vs.QuotesCount, &vs.AwardedCount, &vs.AvgDelivery, &vs.TotalRevenue); err == nil {
+				stats.VendorPerformance = append(stats.VendorPerformance, vs)
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+func (s *Store) GetSpendTrend(ctx context.Context, months int, vendorID string) ([]domain.SpendTrendPoint, error) {
 	if months <= 0 {
 		months = 6
 	}
+	
+	where := "WHERE deleted_at IS NULL AND COALESCE(invoice_date, created_at) >= date_trunc('month', NOW()) - ($1::int || ' months')::interval"
+	args := []any{months}
+	if vendorID != "" {
+		where += " AND vendor_id = $2::uuid"
+		args = append(args, vendorID)
+	}
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT to_char(date_trunc('month', COALESCE(invoice_date, created_at)), 'YYYY-MM') AS month,
 		       COALESCE(SUM(grand_total), 0) AS amount
 		FROM invoices
-		WHERE deleted_at IS NULL
-		  AND COALESCE(invoice_date, created_at) >= date_trunc('month', NOW()) - ($1::int || ' months')::interval
+		` + where + `
 		GROUP BY 1
 		ORDER BY 1 ASC
-	`, months)
+	`, args...)
 	if err != nil {
 		return nil, err
 	}

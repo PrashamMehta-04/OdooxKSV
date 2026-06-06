@@ -120,6 +120,7 @@ func (s *Store) DecideApproval(ctx context.Context, approvalID, approverID strin
 
 		if updated.Status == "rejected" {
 			_, err := tx.ExecContext(ctx, `UPDATE quotations SET status = 'rejected', updated_at = NOW() WHERE id = $1::uuid`, updated.QuotationID)
+			_ = s.NotifyVendorTx(ctx, tx, getVendorIDFromQuotation(ctx, tx, updated.QuotationID), "Quotation Rejected", "Your quotation has been rejected.", "vendor-submissions")
 			return err
 		}
 
@@ -148,10 +149,18 @@ func (s *Store) DecideApproval(ctx context.Context, approvalID, approverID strin
 			}
 			po = generatedPO
 			inv = generatedInvoice
+			
+			_ = s.NotifyVendorTx(ctx, tx, po.VendorID, "Quotation Approved", "Your quotation has been approved and a PO generated.", "purchase-orders")
 		}
 
 		return nil
 	})
 
 	return updated, po, inv, err
+}
+
+func getVendorIDFromQuotation(ctx context.Context, tx *sql.Tx, qID string) string {
+	var vid string
+	_ = tx.QueryRowContext(ctx, "SELECT vendor_id FROM quotations WHERE id = $1::uuid", qID).Scan(&vid)
+	return vid
 }
