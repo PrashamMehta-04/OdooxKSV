@@ -24,11 +24,28 @@ router.post(
         return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
 
-      const { email, password, name, role = 'procurement_officer', vendorId } = req.body;
+      const { email, password, name, role = 'procurement_officer', vendorId, vendorName } = req.body;
 
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
         return res.status(409).json({ success: false, message: 'Email already in use' });
+      }
+
+      let finalVendorId = vendorId;
+
+      // If signing up as a vendor and no vendorId provided, create a new Vendor
+      if (role === 'vendor' && !finalVendorId && vendorName) {
+        const newVendor = await prisma.vendor.create({
+          data: {
+            name: vendorName,
+            email: email, // Use user's email as vendor primary contact
+            phone: 'Not provided',
+            category: 'Other',
+            contactPerson: name,
+            status: 'active',
+          },
+        });
+        finalVendorId = newVendor.id;
       }
 
       const hashed = await bcrypt.hash(password, 10);
@@ -38,7 +55,7 @@ router.post(
           password: hashed,
           name,
           role,
-          vendorId: vendorId || null,
+          vendorId: finalVendorId || null,
         },
         select: { id: true, email: true, name: true, role: true, vendorId: true, createdAt: true },
       });
