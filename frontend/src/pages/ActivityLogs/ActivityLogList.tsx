@@ -52,10 +52,11 @@ const ActivityLogList: React.FC = () => {
     {
       header: 'User',
       render: (row: ActivityLog) => {
-        const u = typeof row.userId === 'object' ? row.userId as User : null;
+        const u = row.user || (typeof row.userId === 'object' ? row.userId as User : null);
         return <span className="text-sm font-medium">{u?.name || '—'}</span>;
       },
     },
+
     {
       header: 'Action',
       render: (row: ActivityLog) => (

@@ -62,13 +62,13 @@ const navItems: NavItem[] = [
     label: 'Invoices',
     to: '/invoices',
     icon: <Receipt size={18} />,
-    roles: ['admin', 'procurement_officer', 'manager'],
+    roles: ['admin', 'procurement_officer', 'manager', 'vendor'],
   },
   {
     label: 'Activity Logs',
     to: '/activity-logs',
     icon: <Activity size={18} />,
-    roles: ['admin'],
+    roles: ['admin', 'vendor'],
   },
   {
     label: 'Reports',

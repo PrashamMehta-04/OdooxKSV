@@ -39,8 +39,8 @@ const roleAccess: Record<string, UserRole[]> = {
   '/quotations': ['admin', 'procurement_officer', 'vendor', 'manager'],
   '/approvals': ['admin', 'procurement_officer', 'manager'],
   '/purchase-orders': ['admin', 'procurement_officer', 'manager', 'vendor'],
-  '/invoices': ['admin', 'procurement_officer', 'manager'],
-  '/activity-logs': ['admin'],
+  '/invoices': ['admin', 'procurement_officer', 'manager', 'vendor'],
+  '/activity-logs': ['admin', 'vendor'],
   '/reports': ['admin', 'manager'],
 };
 

@@ -119,20 +119,3 @@ const InvoiceList: React.FC = () => {
 };
 
 export default InvoiceList;
-  />
-      </Card>
-    </div>
-  );
-};
-
-export default InvoiceList;
-    isLoading={isLoading}
-          keyExtractor={(r) => r.id}
-          emptyMessage="No invoices yet."
-        />
-      </Card>
-    </div>
-  );
-};
-
-export default InvoiceList;

@@ -7,14 +7,20 @@ const router = Router();
 router.use(authenticate);
 
 // GET /api/activity-logs
-router.get('/', requireRole('admin', 'manager', 'procurement_officer'), async (req: AuthRequest, res: Response) => {
+router.get('/', requireRole('admin', 'manager', 'procurement_officer', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const { entityType, entityId, userId, limit = '50', offset = '0' } = req.query as Record<string, string>;
 
     const where: any = {};
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
-    if (userId) where.userId = userId;
+    
+    // Scoping for vendors: only see their own logs
+    if (req.user!.role === 'vendor') {
+      where.userId = req.user!.id;
+    } else if (userId) {
+      where.userId = userId;
+    }
 
     const [logs, total] = await Promise.all([
       prisma.activityLog.findMany({

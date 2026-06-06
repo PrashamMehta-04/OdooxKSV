@@ -5,6 +5,83 @@ import { AuthRequest } from '../types';
 
 const router = Router();
 router.use(authenticate);
+
+// GET /api/reports/monthly-trends
+router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    const isVendor = user.role === 'vendor';
+    const vendorId = user.vendorId;
+
+    // Scope trends to vendor if applicable
+    const poFilter = isVendor ? { approval: { quotation: { vendorId } } } : {};
+    const invoiceFilter = isVendor ? { purchaseOrder: { approval: { quotation: { vendorId } } } } : {};
+
+    // Fetch last 12 months of POs and invoices
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
+    twelveMonthsAgo.setUTCDate(1);
+    twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
+
+    const [pos, invoices] = await Promise.all([
+      prisma.purchaseOrder.findMany({
+        where: { 
+          ...poFilter as any,
+          createdAt: { gte: twelveMonthsAgo } 
+        },
+        select: { createdAt: true, totalAmount: true },
+      }),
+      prisma.invoice.findMany({
+        where: { 
+          ...invoiceFilter as any,
+          createdAt: { gte: twelveMonthsAgo } 
+        },
+        select: { createdAt: true, totalAmount: true },
+      }),
+    ]);
+
+    // Build month buckets
+    const months: Record<string, { month: string; poCount: number; poTotal: number; invoiceCount: number; invoiceTotal: number }> = {};
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date();
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() - i);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      months[key] = { month: key, poCount: 0, poTotal: 0, invoiceCount: 0, invoiceTotal: 0 };
+    }
+
+    for (const po of pos) {
+      const d = new Date(po.createdAt);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      if (months[key]) {
+        months[key].poCount += 1;
+        months[key].poTotal += po.totalAmount;
+      }
+    }
+
+    for (const inv of invoices) {
+      const d = new Date(inv.createdAt);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      if (months[key]) {
+        months[key].invoiceCount += 1;
+        months[key].invoiceTotal += inv.totalAmount;
+      }
+    }
+
+    const trends = Object.values(months).map((m) => ({
+      month: m.month,
+      purchaseOrders: m.poCount,
+      invoices: m.invoiceCount,
+      spend: parseFloat(m.invoiceTotal.toFixed(2)),
+    }));
+
+    return res.json({ success: true, data: trends });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Protect all following routes
 router.use(requireRole('admin', 'manager', 'procurement_officer'));
 
 // GET /api/reports/vendor-performance
@@ -139,67 +216,6 @@ router.get('/spending-summary', async (req: AuthRequest, res: Response) => {
       .sort((a, b) => b.totalSpend - a.totalSpend);
 
     return res.json({ success: true, data: summary });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// GET /api/reports/monthly-trends
-router.get('/monthly-trends', async (req: AuthRequest, res: Response) => {
-  try {
-    // Fetch last 12 months of POs and invoices
-    const twelveMonthsAgo = new Date();
-    twelveMonthsAgo.setUTCHours(0, 0, 0, 0);
-    twelveMonthsAgo.setUTCDate(1);
-    twelveMonthsAgo.setUTCMonth(twelveMonthsAgo.getUTCMonth() - 11);
-
-    const [pos, invoices] = await Promise.all([
-      prisma.purchaseOrder.findMany({
-        where: { createdAt: { gte: twelveMonthsAgo } },
-        select: { createdAt: true, totalAmount: true },
-      }),
-      prisma.invoice.findMany({
-        where: { createdAt: { gte: twelveMonthsAgo } },
-        select: { createdAt: true, totalAmount: true },
-      }),
-    ]);
-
-    // Build month buckets
-    const months: Record<string, { month: string; poCount: number; poTotal: number; invoiceCount: number; invoiceTotal: number }> = {};
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date();
-      d.setUTCDate(1);
-      d.setUTCMonth(d.getUTCMonth() - i);
-      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-      months[key] = { month: key, poCount: 0, poTotal: 0, invoiceCount: 0, invoiceTotal: 0 };
-    }
-
-    for (const po of pos) {
-      const d = new Date(po.createdAt);
-      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-      if (months[key]) {
-        months[key].poCount += 1;
-        months[key].poTotal += po.totalAmount;
-      }
-    }
-
-    for (const inv of invoices) {
-      const d = new Date(inv.createdAt);
-      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-      if (months[key]) {
-        months[key].invoiceCount += 1;
-        months[key].invoiceTotal += inv.totalAmount;
-      }
-    }
-
-    const trends = Object.values(months).map((m) => ({
-      month: m.month,
-      purchaseOrders: m.poCount,
-      invoices: m.invoiceCount,
-      spend: parseFloat(m.invoiceTotal.toFixed(2)),
-    }));
-
-    return res.json({ success: true, data: trends });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
   }

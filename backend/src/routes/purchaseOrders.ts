@@ -23,9 +23,10 @@ router.get('/', requireRole('admin', 'procurement_officer', 'manager', 'vendor')
 
     // Vendor users only see POs belonging to their quotations
     if (req.user!.role === 'vendor' && req.user!.vendorId) {
+      const vendorId = String(req.user!.vendorId);
       where.approval = {
         quotation: {
-          vendorId: req.user!.vendorId,
+          vendorId: vendorId,
         },
       };
     }

@@ -174,6 +174,7 @@ export interface Notification {
 export interface ActivityLog {
   id: string;
   userId: User | string;
+  user?: User;
   action: string;
   entityType: string;
   entityId: string;

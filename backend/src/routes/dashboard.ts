@@ -10,6 +10,16 @@ router.use(authenticate);
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
+    const isVendor = user.role === 'vendor';
+    const vendorId = user.vendorId;
+
+    // Define filters based on role
+    const rfqFilter = isVendor ? { rfqVendors: { some: { vendorId } }, status: 'sent' } : { status: 'sent' };
+    const approvalFilter = isVendor 
+      ? { quotation: { vendorId }, status: 'pending' } 
+      : { status: 'pending' };
+    const poFilter = isVendor ? { approval: { quotation: { vendorId } } } : {};
+    const invoiceFilter = isVendor ? { purchaseOrder: { approval: { quotation: { vendorId } } } } : {};
 
     // Run core counts in parallel
     const [
@@ -21,12 +31,13 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       recentPOs,
       recentInvoices,
     ] = await Promise.all([
-      prisma.approval.count({ where: { status: 'pending' } }),
-      prisma.rfq.count({ where: { status: 'sent' } }),
+      prisma.approval.count({ where: approvalFilter as any }),
+      prisma.rfq.count({ where: rfqFilter as any }),
       prisma.vendor.count({ where: { status: 'active' } }),
-      prisma.purchaseOrder.count(),
-      prisma.invoice.count(),
+      prisma.purchaseOrder.count({ where: poFilter as any }),
+      prisma.invoice.count({ where: invoiceFilter as any }),
       prisma.purchaseOrder.findMany({
+        where: poFilter as any,
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: {
@@ -43,6 +54,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         },
       }),
       prisma.invoice.findMany({
+        where: invoiceFilter as any,
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: {
@@ -63,10 +75,13 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       }),
     ]);
 
-    // Total spend from generated/sent/paid invoices
+    // Total spend/earnings calculation
     const spendAgg = await prisma.invoice.aggregate({
       _sum: { totalAmount: true },
-      where: { status: { in: ['generated', 'sent', 'paid'] } },
+      where: { 
+        ...invoiceFilter as any,
+        status: { in: ['generated', 'sent', 'paid'] } 
+      },
     });
     const totalSpend = spendAgg._sum.totalAmount ?? 0;
 

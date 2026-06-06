@@ -17,11 +17,23 @@ async function generateInvoiceNumber(): Promise<string> {
 }
 
 // GET /api/invoices
-router.get('/', requireRole('admin', 'procurement_officer', 'manager'), async (req: AuthRequest, res: Response) => {
+router.get('/', requireRole('admin', 'procurement_officer', 'manager', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const { status } = req.query as Record<string, string>;
     const where: any = {};
     if (status) where.status = status;
+
+    // Vendor users only see invoices belonging to their purchase orders
+    if (req.user!.role === 'vendor' && req.user!.vendorId) {
+      const vendorId = String(req.user!.vendorId);
+      where.purchaseOrder = {
+        approval: {
+          quotation: {
+            vendorId: vendorId,
+          },
+        },
+      };
+    }
 
     const invoices = await prisma.invoice.findMany({
       where,
@@ -121,7 +133,7 @@ router.post(
 );
 
 // GET /api/invoices/:id
-router.get('/:id', requireRole('admin', 'procurement_officer', 'manager'), async (req: AuthRequest, res: Response) => {
+router.get('/:id', requireRole('admin', 'procurement_officer', 'manager', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const invoice = await prisma.invoice.findUnique({
       where: { id: req.params.id },
@@ -146,6 +158,14 @@ router.get('/:id', requireRole('admin', 'procurement_officer', 'manager'), async
     });
 
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+
+    // Vendor check
+    if (req.user!.role === 'vendor') {
+      if (invoice.purchaseOrder.approval.quotation.vendorId !== req.user!.vendorId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
+
     return res.json({ success: true, data: invoice });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });
@@ -153,7 +173,7 @@ router.get('/:id', requireRole('admin', 'procurement_officer', 'manager'), async
 });
 
 // GET /api/invoices/:id/pdf
-router.get('/:id/pdf', requireRole('admin', 'procurement_officer', 'manager'), async (req: AuthRequest, res: Response) => {
+router.get('/:id/pdf', requireRole('admin', 'procurement_officer', 'manager', 'vendor'), async (req: AuthRequest, res: Response) => {
   try {
     const invoice = await prisma.invoice.findUnique({
       where: { id: req.params.id },
@@ -177,6 +197,13 @@ router.get('/:id/pdf', requireRole('admin', 'procurement_officer', 'manager'), a
     });
 
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+
+    // Vendor check
+    if (req.user!.role === 'vendor') {
+      if (invoice.purchaseOrder.approval.quotation.vendorId !== req.user!.vendorId) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    }
 
     const { purchaseOrder } = invoice;
     const { approval } = purchaseOrder;

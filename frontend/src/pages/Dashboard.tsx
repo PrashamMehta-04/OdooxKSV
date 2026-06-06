@@ -192,39 +192,44 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {user?.role !== 'vendor' && (
+          <StatCard
+            title="Pending Approvals"
+            value={data?.pendingApprovals ?? 0}
+            icon={<ClipboardList size={20} />}
+            colorClass="bg-yellow-50 text-yellow-600"
+          />
+        )}
         <StatCard
-          title="Pending Approvals"
-          value={data?.pendingApprovals ?? 0}
-          icon={<ClipboardList size={20} />}
-          colorClass="bg-yellow-50 text-yellow-600"
-        />
-        <StatCard
-          title="Active RFQs"
+          title={user?.role === 'vendor' ? 'My RFQ Invitations' : 'Active RFQs'}
           value={data?.activeRFQs ?? 0}
           icon={<FileText size={20} />}
           colorClass="bg-blue-50 text-blue-600"
         />
+        {user?.role !== 'vendor' && (
+          <StatCard
+            title="Total Vendors"
+            value={data?.totalVendors ?? 0}
+            icon={<Building2 size={20} />}
+            colorClass="bg-green-50 text-green-600"
+          />
+        )}
         <StatCard
-          title="Total Vendors"
-          value={data?.totalVendors ?? 0}
-          icon={<Building2 size={20} />}
-          colorClass="bg-green-50 text-green-600"
-        />
-        <StatCard
-          title="Purchase Orders"
+          title={user?.role === 'vendor' ? 'My Purchase Orders' : 'Purchase Orders'}
           value={data?.totalPOs ?? 0}
           icon={<ShoppingCart size={20} />}
           colorClass="bg-purple-50 text-purple-600"
         />
         <StatCard
-          title="Total Invoices"
+          title={user?.role === 'vendor' ? 'My Invoices' : 'Total Invoices'}
           value={data?.totalInvoices ?? 0}
           icon={<Receipt size={20} />}
           colorClass="bg-orange-50 text-orange-600"
         />
         <StatCard
-          title="Total Spend"
+          className="xl:col-span-2"
+          title={user?.role === 'vendor' ? 'Total Earnings' : 'Total Spend'}
           value={formatCurrency(data?.totalSpend ?? 0)}
           icon={<DollarSign size={20} />}
           colorClass="bg-primary-50 text-primary-600"

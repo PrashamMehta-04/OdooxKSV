@@ -207,7 +207,7 @@ const Reports: React.FC = () => {
                 <PieChart>
                   <Pie
                     data={spending}
-                    dataKey="amount"
+                    dataKey="totalSpend"
                     nameKey="category"
                     cx="50%"
                     cy="50%"
