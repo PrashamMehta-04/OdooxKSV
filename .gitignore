@@ -1,0 +1,15 @@
+Vendorbridge Hackathon Problem Statement.pdf
+VENDORBRIDGE_PLAN.md
+VENDORBRIDGE_PROGRESS.md
+
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+.DS_Store

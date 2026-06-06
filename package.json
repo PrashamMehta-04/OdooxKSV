@@ -1,0 +1,35 @@
+{
+  "name": "vendorbridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VendorBridge Procurement and Vendor Management ERP",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n client,server -c cyan,green \"npm run dev --workspace client\" \"npm run dev --workspace server\"",
+    "dev:client": "npm run dev --workspace client",
+    "dev:server": "npm run dev --workspace server",
+    "db:setup": "npm run db:setup --workspace server",
+    "db:seed": "npm run db:seed --workspace server",
+    "build": "npm run build --workspace client && npm run build --workspace server",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspace client && npm run typecheck --workspace server",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "typescript-eslint": "^8.49.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
