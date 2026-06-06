@@ -28,13 +28,18 @@ rfqsRouter.get("/", requireAuth, requireRoles(["PROCUREMENT_OFFICER", "ADMIN", "
     const params: any[] = [];
 
     if (user!.role === "VENDOR") {
-      // VENDOR can only see RFQs they are invited to
-      query += `
+      // VENDOR sees their specific invitation status instead of global RFQ status
+      query = `
+        SELECT r.id, r.title, r.description, r.quantity, r.unit, r.attachment_url as "attachmentUrl",
+               r.deadline, i.status as "status", r.created_by_id as "createdById", r.created_at as "createdAt",
+               u.name as "createdByName"
+        FROM rfqs r
+        JOIN users u ON r.created_by_id = u.id
         JOIN rfq_vendor_invitations i ON r.id = i.rfq_id
         JOIN vendors v ON i.vendor_id = v.id
         WHERE v.email = $1
       `;
-      params.push(user!.email); // Assuming vendor users have same email as vendor record
+      params.push(user!.email);
     }
 
     query += ` ORDER BY r.created_at DESC`;
@@ -65,15 +70,22 @@ rfqsRouter.get("/:id", requireAuth, async (req, res) => {
     }
 
     const { rows: invitationRows } = await db.query(
-      `SELECT i.id, i.status, i.invited_at as "invitedAt", v.id as "vendorId", v.company_name as "companyName"
+      `SELECT i.id, i.status, i.invited_at as "invitedAt", v.id as "vendorId", v.company_name as "companyName", v.email as "vendorEmail"
        FROM rfq_vendor_invitations i
        JOIN vendors v ON i.vendor_id = v.id
        WHERE i.rfq_id = $1`,
       [req.params.id]
     );
 
+    let finalStatus = rfqRows[0].status;
+    if (req.user!.role === "VENDOR") {
+      const myInvitation = invitationRows.find(i => i.vendorEmail === req.user!.email);
+      if (myInvitation) finalStatus = myInvitation.status;
+    }
+
     res.json({
       ...rfqRows[0],
+      status: finalStatus,
       invitations: invitationRows
     });
   } catch (err) {

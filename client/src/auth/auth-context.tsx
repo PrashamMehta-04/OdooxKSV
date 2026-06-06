@@ -33,6 +33,7 @@ interface AuthContextValue {
   login: (input: { email: string; password: string }) => Promise<void>;
   signup: (input: { name: string; email: string; password: string; role: Role }) => Promise<void>;
   forgotPassword: (input: { email: string }) => Promise<string>;
+  resetPassword: (input: { email: string; otp: string; newPassword: string }) => Promise<string>;
   logout: () => Promise<void>;
 }
 
@@ -144,6 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return response.message;
   }, []);
 
+  const resetPassword = useCallback(async (input: { email: string; otp: string; newPassword: string }) => {
+    const response = await apiRequest<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(input)
+    });
+
+    return response.message;
+  }, []);
+
   const logout = useCallback(async () => {
     clearStoredAccessToken();
     setUser(null);
@@ -162,9 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       signup,
       forgotPassword,
+      resetPassword,
       logout
     }),
-    [accessToken, forgotPassword, isBootstrapping, login, logout, signup, user]
+    [accessToken, forgotPassword, isBootstrapping, login, logout, resetPassword, signup, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

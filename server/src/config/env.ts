@@ -16,5 +16,9 @@ export const env = {
   jwtRefreshSecret:
     process.env.JWT_REFRESH_SECRET ?? "vendorbridge-local-refresh-secret-change-before-production",
   jwtAccessTtl: process.env.JWT_ACCESS_TTL ?? "15m",
-  jwtRefreshTtl: process.env.JWT_REFRESH_TTL ?? "7d"
+  jwtRefreshTtl: process.env.JWT_REFRESH_TTL ?? "7d",
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? ""
 };

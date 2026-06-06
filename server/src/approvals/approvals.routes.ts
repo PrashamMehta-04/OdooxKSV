@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
 import { db } from "../db/client.js";
 import { z } from "zod";
+import { getIo } from "../socket.js";
 
 export const approvalsRouter = Router();
 
@@ -157,6 +158,9 @@ approvalsRouter.post("/request", requireAuth, requireRoles(["PROCUREMENT_OFFICER
     );
 
     await client.query("COMMIT");
+    try {
+      getIo().to(data.approverId).emit("notification_update");
+    } catch (e) { console.error("Websocket emit failed", e); }
     res.status(201).json(reqRows[0]);
   } catch (err) {
     await client.query("ROLLBACK");
@@ -258,6 +262,9 @@ approvalsRouter.patch("/:id/decision", requireAuth, requireRoles(["MANAGER"]), a
     );
 
     await client.query("COMMIT");
+    try {
+      getIo().to(approval.requested_by_id).emit("notification_update");
+    } catch (e) { console.error("Websocket emit failed", e); }
     res.json(rows[0]);
   } catch (err) {
     await client.query("ROLLBACK");

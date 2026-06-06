@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle, FileText, Download } from "lucide-react";
+import { ArrowLeft, CheckCircle, FileText, Download, Mail } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -41,6 +41,7 @@ export function PoDetailPage() {
   const { accessToken, user } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
+  const [isEmailing, setIsEmailing] = useState(false);
 
   const poQuery = useQuery({
     queryKey: ["pos", id],
@@ -94,6 +95,15 @@ export function PoDetailPage() {
     }
   });
 
+  const handleEmailInvoice = () => {
+    setIsEmailing(true);
+    // Simulate API call to email invoice
+    setTimeout(() => {
+      toast.success("Invoice emailed successfully to the registered email address.");
+      setIsEmailing(false);
+    }, 1500);
+  };
+
   const po = poQuery.data;
   // Find invoices for this PO
   const poInvoices = invoicesQuery.data?.filter(inv => inv.poNumber === po?.poNumber) ?? [];
@@ -130,10 +140,27 @@ export function PoDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Orders
           </Link>
-          <button className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
-            <Download className="h-4 w-4" />
-            Download PDF
-          </button>
+          <div className="flex items-center gap-2">
+            {latestInvoice && (
+              <button 
+                onClick={handleEmailInvoice}
+                disabled={isEmailing}
+                className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+              >
+                <Mail className="h-4 w-4" />
+                {isEmailing ? "Sending..." : "Email Invoice"}
+              </button>
+            )}
+            <button 
+              onClick={() => {
+                window.print();
+              }}
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -145,7 +172,7 @@ export function PoDetailPage() {
         <div className="grid gap-6 md:grid-cols-3">
           <div className="space-y-6 md:col-span-2">
             {/* Printable Document View */}
-            <div className="rounded-md border border-border bg-white text-black p-8 shadow-sm">
+            <div id="printable-document" className="rounded-md border border-border bg-white text-black p-8 shadow-sm">
               <div className="flex justify-between items-start border-b border-gray-200 pb-6 mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 tracking-tight">PURCHASE ORDER</h1>

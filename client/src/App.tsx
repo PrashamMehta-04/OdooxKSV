@@ -24,8 +24,9 @@ import {
   Users,
   X
 } from "lucide-react";
-import { FormEvent, type ReactNode, useMemo, useState } from "react";
+import { FormEvent, type ReactNode, useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { io } from "socket.io-client";
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { AuthProvider, type Role, useAuth } from "./auth/auth-context";
@@ -266,28 +267,46 @@ export function App() {
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <section className="flex flex-col gap-6">
+    <main className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+      <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+      <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
+
+      <div className="mx-auto grid min-h-screen max-w-6xl gap-12 px-6 py-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center relative z-10">
+        <section className="flex flex-col gap-8">
           <div>
-            <p className="text-sm font-medium text-primary">VendorBridge</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal md:text-4xl">
-              Procurement access by role
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-6">
+              <Store className="h-4 w-4" /> VendorBridge ERP
+            </div>
+            <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl text-foreground">
+              Streamline your <span className="text-primary">supply chain</span>
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-              Secure sign-in for admins, procurement officers, vendors, and managers.
+            <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+              The enterprise procurement network. Connect with global suppliers, automate purchase orders, and track invoices in one unified, intelligent platform.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {Object.entries(roleLabels).map(([role, label]) => (
-              <div key={role} className="rounded-md border border-border bg-card px-4 py-3">
-                <p className="text-sm font-medium">{label}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Role-gated workspace</p>
+          <div className="grid gap-4 sm:grid-cols-2 mt-4">
+            <div className="rounded-xl border border-border/60 bg-card/40 p-5 backdrop-blur-md shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+              <div className="mb-3 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
+                <ClipboardList className="h-5 w-5" />
               </div>
-            ))}
+              <h3 className="font-semibold text-foreground">Smart RFQs</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Automated quoting and comparisons.</p>
+            </div>
+            <div className="rounded-xl border border-border/60 bg-card/40 p-5 backdrop-blur-md shadow-sm transition-all hover:border-primary/30 hover:shadow-md">
+              <div className="mb-3 inline-flex rounded-lg bg-primary/10 p-2 text-primary">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold text-foreground">Compliance</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Multi-tier manager approvals.</p>
+            </div>
           </div>
         </section>
-        <section className="rounded-md border border-border bg-card p-6 shadow-sm">{children}</section>
+        <section className="rounded-2xl border border-border/50 bg-card/80 p-8 shadow-xl backdrop-blur-xl relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent rounded-2xl pointer-events-none"></div>
+          <div className="relative z-10">{children}</div>
+        </section>
       </div>
     </main>
   );
@@ -331,7 +350,7 @@ function LoginPage() {
 
   return (
     <AuthLayout>
-      <AuthHeader title="Login" subtitle="Use a seeded account or your own signup." icon={LogIn} />
+      <AuthHeader title="Login" subtitle="Welcome back! Please enter your credentials to access your workspace." icon={LogIn} />
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
         <Field label="Email" value={email} onChange={setEmail} type="email" />
         <Field label="Password" value={password} onChange={setPassword} type="password" />
@@ -390,7 +409,7 @@ function SignupPage() {
 
   return (
     <AuthLayout>
-      <AuthHeader title="Signup" subtitle="Create a role-specific workspace account." icon={UserPlus} />
+      <AuthHeader title="Signup" subtitle="Create an account to join the VendorBridge network." icon={UserPlus} />
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
         <Field label="Name" value={form.name} onChange={(name) => setForm({ ...form, name })} />
         <Field
@@ -435,8 +454,12 @@ function SignupPage() {
 }
 
 function ForgotPasswordPage() {
-  const { forgotPassword, user } = useAuth();
+  const { forgotPassword, resetPassword, user } = useAuth();
+  const navigate = useNavigate();
+  const [step, setStep] = useState<"request" | "reset">("request");
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -445,7 +468,7 @@ function ForgotPasswordPage() {
     return <Navigate to="/" replace />;
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");
@@ -457,10 +480,10 @@ function ForgotPasswordPage() {
     }
 
     setIsSubmitting(true);
-
     try {
       const responseMessage = await forgotPassword(parsed.data);
       setMessage(responseMessage);
+      setStep("reset");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to request reset.");
     } finally {
@@ -468,26 +491,74 @@ function ForgotPasswordPage() {
     }
   }
 
+  async function handleReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    
+    if (otp.length !== 6) {
+      setError("OTP must be 6 digits.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const responseMessage = await resetPassword({ email, otp, newPassword });
+      setMessage(responseMessage);
+      setTimeout(() => navigate("/login"), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to reset password.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <AuthLayout>
-      <AuthHeader title="Forgot password" subtitle="Request reset instructions." icon={KeyRound} />
-      <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-        <Field label="Email" value={email} onChange={setEmail} type="email" />
-        <ErrorMessage message={error} />
-        {message ? (
-          <p className="rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary">
-            {message}
-          </p>
-        ) : null}
-        <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
-          disabled={isSubmitting}
-          type="submit"
-        >
-          <Mail className="h-4 w-4" aria-hidden="true" />
-          {isSubmitting ? "Sending..." : "Send reset email"}
-        </button>
-      </form>
+      <AuthHeader title="Forgot password" subtitle={step === "request" ? "Request reset instructions." : "Enter OTP and new password."} icon={KeyRound} />
+      {step === "request" ? (
+        <form className="mt-6 grid gap-4" onSubmit={handleRequest}>
+          <Field label="Email" value={email} onChange={setEmail} type="email" />
+          <ErrorMessage message={error} />
+          {message && (
+            <p className="rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary">
+              {message}
+            </p>
+          )}
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            <Mail className="h-4 w-4" aria-hidden="true" />
+            {isSubmitting ? "Sending..." : "Send reset email"}
+          </button>
+        </form>
+      ) : (
+        <form className="mt-6 grid gap-4" onSubmit={handleReset}>
+          <Field label="Email" value={email} onChange={setEmail} type="email" />
+          <Field label="6-Digit OTP" value={otp} onChange={setOtp} type="text" />
+          <Field label="New Password" value={newPassword} onChange={setNewPassword} type="password" />
+          <ErrorMessage message={error} />
+          {message && (
+            <p className="rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-sm text-primary">
+              {message}
+            </p>
+          )}
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-70"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+            {isSubmitting ? "Resetting..." : "Set new password"}
+          </button>
+        </form>
+      )}
       <AuthLinks primaryHref="/login" primaryText="Back to login" />
     </AuthLayout>
   );
@@ -719,6 +790,23 @@ function DashboardPage() {
       }),
     enabled: Boolean(accessToken && user)
   });
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Connect to websocket server
+    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:3000");
+    
+    socket.emit("join", user.id);
+    
+    socket.on("notification_update", () => {
+      dashboardQuery.refetch();
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [user, dashboardQuery]);
 
   if (!user) {
     return null;
@@ -1021,8 +1109,11 @@ function ActivityList({ items, isLoading }: { items: DashboardActivity[]; isLoad
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const normalized = status.replaceAll("_", " ").toLowerCase();
-  const isPositive = ["APPROVED", "ISSUED", "SENT", "PAID", "FULFILLED", "ACKNOWLEDGED", "ACTIVE"].includes(status);
+  let displayStatus = status;
+  if (status === "SENT") displayStatus = "OPEN";
+  
+  const normalized = displayStatus.replaceAll("_", " ").toLowerCase();
+  const isPositive = ["APPROVED", "ISSUED", "OPEN", "PAID", "FULFILLED", "ACKNOWLEDGED", "ACTIVE"].includes(displayStatus);
 
   return (
     <span

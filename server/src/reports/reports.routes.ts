@@ -48,6 +48,13 @@ reportsRouter.get("/", requireAuth, requireRoles(["ADMIN", "MANAGER"]), async (r
       GROUP BY status
     `);
 
+    // 5. PO Status Distribution
+    const { rows: poStatusRows } = await db.query(`
+      SELECT status, COUNT(*) as count
+      FROM purchase_orders
+      GROUP BY status
+    `);
+
     res.json({
       spending: spendRows.map(r => ({ month: r.month, amount: Number(r.amount) || 0 })),
       vendors: vendorRows.map(r => ({ 
@@ -56,7 +63,8 @@ reportsRouter.get("/", requireAuth, requireRoles(["ADMIN", "MANAGER"]), async (r
         totalSpend: Number(r.totalSpend) || 0 
       })),
       avgTurnaroundDays: Number(turnaroundRows[0]?.avgDays) || 0,
-      rfqDistribution: rfqStatusRows.map(r => ({ name: r.status, value: Number(r.count) }))
+      rfqDistribution: rfqStatusRows.map(r => ({ name: r.status, value: Number(r.count) })),
+      poDistribution: poStatusRows.map(r => ({ name: r.status, value: Number(r.count) }))
     });
   } catch (err) {
     console.error(err);

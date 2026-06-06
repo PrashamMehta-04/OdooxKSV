@@ -13,6 +13,7 @@ interface ReportsData {
   vendors: { name: string; orderCount: number; totalSpend: number }[];
   avgTurnaroundDays: number;
   rfqDistribution: { name: string; value: number }[];
+  poDistribution: { name: string; value: number }[];
 }
 
 const COLORS = ['#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7'];
@@ -137,8 +138,31 @@ export function ReportsPage() {
               </div>
             </div>
 
-            {/* RFQ Status Distribution */}
+            {/* Vendor Spend Chart */}
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-2">
+              <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                Top Spend by Vendor
+              </h3>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reportsQuery.data?.vendors} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#888" opacity={0.2} />
+                    <XAxis type="number" tickFormatter={(value) => `$${value >= 1000 ? (value/1000) + 'k' : value}`} tick={{fill: '#888', fontSize: 12}} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="name" type="category" tick={{fill: '#888', fontSize: 12}} axisLine={false} tickLine={false} width={100} />
+                    <Tooltip 
+                      formatter={(value: any) => currency.format(Number(value) || 0)}
+                      cursor={{fill: 'rgba(0,0,0,0.05)'}}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="totalSpend" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={24} name="Total Spend" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* RFQ Status Distribution */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-1">
               <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-muted-foreground" />
                 RFQ Status Distribution
@@ -150,13 +174,44 @@ export function ReportsPage() {
                       data={reportsQuery.data?.rfqDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={80}
-                      outerRadius={120}
+                      innerRadius={60}
+                      outerRadius={100}
                       paddingAngle={2}
                       dataKey="value"
                     >
                       {reportsQuery.data?.rfqDistribution.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* PO Status Distribution */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-1">
+              <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                PO Status Distribution
+              </h3>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={reportsQuery.data?.poDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {reportsQuery.data?.poDistribution?.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip 

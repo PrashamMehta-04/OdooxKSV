@@ -166,9 +166,10 @@ export function ApprovalDetailPage() {
               <h2 className="text-lg font-semibold mb-4">Manager Decision</h2>
               
               {approval.status === 'PENDING' ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Remarks</label>
+                user?.role === 'MANAGER' ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Remarks</label>
                     <textarea
                       required
                       value={remarks}
@@ -199,6 +200,11 @@ export function ApprovalDetailPage() {
                     Note: A decision requires remarks for audit purposes.
                   </p>
                 </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 rounded-md bg-muted/20 border border-border">
+                    <p className="text-sm text-muted-foreground">Awaiting Manager Review</p>
+                  </div>
+                )
               ) : (
                 <div className={`rounded-md p-4 flex items-start gap-3 ${approval.status === 'APPROVED' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                   {approval.status === 'APPROVED' ? (

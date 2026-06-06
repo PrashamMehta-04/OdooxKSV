@@ -210,7 +210,18 @@ authRouter.get("/me", async (req, res) => {
   }
 });
 
-authRouter.post("/forgot-password", (req, res) => {
+import nodemailer from "nodemailer";
+
+// In-memory OTP store for the hackathon
+const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+
+const resetPasswordSchema = z.object({
+  email: z.string().email(),
+  otp: z.string().length(6),
+  newPassword: z.string().min(8)
+});
+
+authRouter.post("/forgot-password", async (req, res) => {
   const parsed = forgotPasswordSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -218,10 +229,65 @@ authRouter.post("/forgot-password", (req, res) => {
     return;
   }
 
+  const existingUser = await findUserByEmail(parsed.data.email);
+  
+  if (existingUser) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(parsed.data.email, {
+      otp,
+      expiresAt: Date.now() + 15 * 60 * 1000 // 15 mins
+    });
+
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      const transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: '"VendorBridge Security" <noreply@vendorbridge.com>',
+        to: parsed.data.email,
+        subject: "Password Reset OTP",
+        text: `Your password reset OTP is: ${otp}`,
+      });
+
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      console.log("OTP for", parsed.data.email, "is", otp);
+    } catch (e) {
+      console.error("Mail error", e);
+    }
+  }
+
   res.json({
-    message:
-      "If that email belongs to an active VendorBridge account, password reset instructions will be sent."
+    message: "If that email belongs to an active VendorBridge account, an OTP has been sent."
   });
+});
+
+authRouter.post("/reset-password", async (req, res) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: "Invalid data.", errors: parsed.error.flatten() });
+    return;
+  }
+
+  const record = otpStore.get(parsed.data.email);
+  if (!record || record.otp !== parsed.data.otp || record.expiresAt < Date.now()) {
+    res.status(400).json({ message: "Invalid or expired OTP." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+  await db.query(`UPDATE users SET password_hash = $1 WHERE email = $2`, [passwordHash, parsed.data.email]);
+  
+  otpStore.delete(parsed.data.email);
+
+  res.json({ message: "Password has been reset successfully." });
 });
 
 authRouter.post("/logout", (_req, res) => {
