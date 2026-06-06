@@ -7,6 +7,8 @@ bin/
 dist/
 build/
 /api
+frontend/node_modules/
+frontend/dist/
 
 # Local environment
 .env

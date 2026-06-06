@@ -54,9 +54,16 @@ make build
 make migrate
 make compose-up
 make compose-down
+make frontend-install
+make frontend-run
+make frontend-build
+make frontend-check
 ```
 
 `make run` will start the Postgres container first, wait for it to become ready, and then launch the API on the host.
+
+The frontend lives in [frontend/](/workspaces/OdooxKSV/frontend) and uses Vite + TypeScript + React.
+Run `make frontend-run` after `make frontend-install` to start the UI at `http://localhost:5173`.
 
 To build the binary outside Docker, use:
 
