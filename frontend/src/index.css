@@ -25,7 +25,9 @@
 
 /* Print styles for invoice */
 @media print {
-  .print\:hidden {
+  .print\:hidden,
+  aside,
+  header {
     display: none !important;
   }
 
@@ -33,10 +35,21 @@
     background: white;
   }
 
+  main,
+  .ml-16,
+  .ml-60 {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    padding-top: 0 !important;
+  }
+
   #invoice-print {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 }
 
