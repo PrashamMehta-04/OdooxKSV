@@ -12,6 +12,7 @@ const items: { key: RouteKey; label: string; description: string; roles?: string
   { key: 'activity', label: 'Activity', description: 'Immutable audit trail', roles: ['admin', 'officer', 'procurement_head', 'finance_manager'] },
   { key: 'reports', label: 'Reports', description: 'Spending insight', roles: ['admin', 'officer', 'procurement_head', 'finance_manager'] },
   { key: 'vendor-submissions', label: 'Vendor Tasks', description: 'Submit and track quotes', roles: ['vendor'] },
+  { key: 'users', label: 'Users', description: 'Manage roles and access', roles: ['admin'] },
 ];
 
 export function Sidebar({ current, onNavigate }: { current: RouteKey; onNavigate: (route: RouteKey) => void }) {

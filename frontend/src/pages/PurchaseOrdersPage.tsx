@@ -31,19 +31,27 @@ export function PurchaseOrdersPage() {
         <PageHeader eyebrow="PO & Invoice" title="Purchase orders" description="Approved procurement converted into PO records." />
         <div className="two-col two-col--wide">
           <SectionCard title="Purchase orders" subtitle="Select an order to view the document.">
-            <div className="stack-list">
+            <div className="data-grid">
               {pos.map((po) => (
                 <button
                   key={po.id}
                   type="button"
-                  className={`stack-list__item stack-list__button ${selectedPo?.id === po.id ? 'stack-list__button--active' : ''}`}
+                  className={`data-card stack-list__button ${selectedPo?.id === po.id ? 'stack-list__button--active' : ''}`}
                   onClick={() => viewPo(po)}
                 >
-                  <div>
-                    <strong>{po.po_number}</strong>
-                    <p>{formatDate(po.po_date)} · Total {formatCurrency(po.grand_total)}</p>
+                  <div className="data-card__header">
+                    <div>
+                      <strong className="data-card__title">{po.po_number}</strong>
+                      <div className="muted small">{formatDate(po.po_date)}</div>
+                    </div>
+                    <Badge tone={statusTone(po.status)}>{po.status}</Badge>
                   </div>
-                  <Badge tone={statusTone(po.status)}>{po.status}</Badge>
+                  <div className="data-card__stats">
+                    <div className="data-stat-row">
+                      <span className="label">Total</span>
+                      <span className="value">{formatCurrency(po.grand_total)}</span>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

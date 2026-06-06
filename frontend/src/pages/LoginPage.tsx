@@ -36,10 +36,16 @@ export function LoginPage() {
           <TextField label="Email / Username" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           
+          <div className="row-actions" style={{ justifyContent: 'flex-end', marginTop: '-10px' }}>
+            <button className="button button--ghost small" type="button" onClick={() => navigate('forgot-password')}>
+              Forgot Password?
+            </button>
+          </div>
+
           {error ? <div className="form-error">{error}</div> : null}
           
           <button className="button button--primary" type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login Button'}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

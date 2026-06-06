@@ -31,19 +31,27 @@ export function InvoicesPage() {
         <PageHeader eyebrow="PO & Invoice" title="Invoices" description="Print, email, and track due dates." />
         <div className="two-col two-col--wide">
           <SectionCard title="Invoice records" subtitle="Select an invoice to view the document.">
-            <div className="stack-list">
+            <div className="data-grid">
               {invoices.map((invoice) => (
                 <button
                   key={invoice.id}
                   type="button"
-                  className={`stack-list__item stack-list__button ${selectedInvoice?.id === invoice.id ? 'stack-list__button--active' : ''}`}
+                  className={`data-card stack-list__button ${selectedInvoice?.id === invoice.id ? 'stack-list__button--active' : ''}`}
                   onClick={() => viewInvoice(invoice)}
                 >
-                  <div>
-                    <strong>{invoice.invoice_number}</strong>
-                    <p>Due {formatDate(invoice.due_date)} · Total {formatCurrency(invoice.grand_total)}</p>
+                  <div className="data-card__header">
+                    <div>
+                      <strong className="data-card__title">{invoice.invoice_number}</strong>
+                      <div className="muted small">Due {formatDate(invoice.due_date)}</div>
+                    </div>
+                    <Badge tone={statusTone(invoice.status)}>{invoice.status}</Badge>
                   </div>
-                  <Badge tone={statusTone(invoice.status)}>{invoice.status}</Badge>
+                  <div className="data-card__stats">
+                    <div className="data-stat-row">
+                      <span className="label">Total</span>
+                      <span className="value">{formatCurrency(invoice.grand_total)}</span>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

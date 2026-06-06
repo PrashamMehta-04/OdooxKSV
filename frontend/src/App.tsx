@@ -14,6 +14,9 @@ import { InvoicesPage } from './pages/InvoicesPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { VendorSubmissionsPage } from './pages/VendorSubmissionsPage';
+import { UsersPage } from './pages/UsersPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 function AppContent() {
@@ -60,6 +63,12 @@ function AppContent() {
         return <ReportsPage />;
       case 'vendor-submissions':
         return <VendorSubmissionsPage />;
+      case 'users':
+        return <UsersPage />;
+      case 'forgot-password':
+        return <ForgotPasswordPage />;
+      case 'reset-password':
+        return <ResetPasswordPage />;
       case 'login':
       case 'register':
         return null;

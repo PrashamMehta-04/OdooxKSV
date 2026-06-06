@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { SelectField, TextField } from '../components/Field';
+import { TextField } from '../components/Field';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
 
@@ -9,7 +9,7 @@ export function RegisterPage() {
     full_name: '',
     email: '',
     password: '',
-    role: 'officer',
+    role: 'pending',
     country: 'India',
     phone_number: '',
     photo_url: '',
@@ -44,13 +44,7 @@ export function RegisterPage() {
           <TextField label="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
           <TextField label="Email Address" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <TextField label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <SelectField label="Role (Admin, officer)" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="admin">Admin</option>
-            <option value="officer">Officer</option>
-            <option value="procurement_head">Procurement Head</option>
-            <option value="finance_manager">Finance Manager</option>
-            <option value="vendor">Vendor</option>
-          </SelectField>
+          
           <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
           <TextField label="Phone Number" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} />
           <TextField label="Photo URL" value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} />

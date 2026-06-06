@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Badge } from '../components/Badge';
 import { PageHeader } from '../components/PageHeader';
 import { SectionCard } from '../components/SectionCard';
-import { TextField } from '../components/Field';
+import { TextField, SelectField } from '../components/Field';
 import { apiFetch } from '../lib/api';
 import { statusTone } from '../lib/format';
 import { useAuth } from '../lib/auth';
@@ -90,76 +90,116 @@ export function VendorsPage() {
       
       <div className="two-col two-col--wide">
         <SectionCard 
-          title={editingId ? 'Edit Vendor' : 'Add Vendor'} 
-          subtitle={editingId ? `Updating ${form.name}` : 'Create a new supplier profile.'}
+          title={editingId ? 'Edit Vendor Profile' : 'Register New Vendor'} 
+          subtitle={editingId ? `Management context for ${form.name}` : 'Onboard a new supply chain partner.'}
         >
-          <form className="form-grid" onSubmit={onSubmit}>
-            <TextField label="Vendor name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <TextField label="GST number" value={form.gst_number} onChange={(e) => setForm({ ...form, gst_number: e.target.value })} />
-            <TextField label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-            <TextField label="Contact number" value={form.contact_number} onChange={(e) => setForm({ ...form, contact_number: e.target.value })} />
-            <TextField label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-            <div className="full-width">
-               <label className="field__label">Status</label>
-               <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="inactive">Inactive</option>
-               </select>
+          <form className="modern-form" onSubmit={onSubmit}>
+            {editingId && (
+              <div className="form-profile-header">
+                <div className="vendor-avatar large">{form.name.charAt(0)}</div>
+                <div className="profile-info">
+                  <h3>{form.name}</h3>
+                  <Badge tone={statusTone(form.status)}>{form.status}</Badge>
+                </div>
+              </div>
+            )}
+
+            <div className="form-sections-grid">
+              <div className="form-group-section">
+                <h4 className="section-header">Partner Information</h4>
+                <div className="field-grid">
+                  <TextField label="Vendor name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Acme Corp" />
+                  <TextField label="Email Address" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="vendor@example.com" />
+                  
+                  <TextField label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Logistics" />
+                  <TextField label="Phone Number" value={form.contact_number} onChange={(e) => setForm({ ...form, contact_number: e.target.value })} placeholder="+1..." />
+                  
+                  <TextField label="GST / Tax ID" value={form.gst_number} onChange={(e) => setForm({ ...form, gst_number: e.target.value })} placeholder="Tax registration number" />
+                  <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                  
+                  <SelectField label="Onboarding" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                    <option value="pending">Pending Review</option>
+                    <option value="approved">Approved / Active</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="inactive">Inactive / Archived</option>
+                  </SelectField>
+                </div>
+              </div>
+
+              <div className="form-group-section">
+                <h4 className="section-header">Internal Notes</h4>
+                <div className="field-grid">
+                   <div className="full-width">
+                      <TextField label="Confidential Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Add any private procurement notes here..." />
+                   </div>
+                </div>
+              </div>
             </div>
-            <TextField label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             
-            <div className="form-grid__submit row-actions">
+            <div className="form-actions-bar">
               <button className="button button--primary" type="submit">
-                {editingId ? 'Update Vendor' : 'Save Vendor'}
+                {editingId ? 'Update Record' : 'Register Vendor'}
               </button>
               {editingId && (
-                <button className="button button--ghost" type="button" onClick={cancelEdit}>Cancel</button>
+                <button className="button button--ghost" type="button" onClick={cancelEdit}>Cancel Changes</button>
               )}
             </div>
           </form>
         </SectionCard>
 
-        <SectionCard title="Vendor List" subtitle="Search and filter active suppliers.">
-          <div className="section-toolbar">
-            <TextField label="Search" value={search} onChange={(e) => setSearch(e.target.value)} onBlur={() => void load()} />
-            <button className="button button--ghost" type="button" onClick={() => void load()}>Search</button>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Vendor</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  {isAdmin && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {vendors.map((vendor) => (
-                  <tr key={vendor.id}>
-                    <td>
-                      <strong>{vendor.name}</strong>
-                      <div className="muted small">{vendor.email || 'No email'}</div>
-                    </td>
-                    <td>{vendor.category || '—'}</td>
-                    <td><Badge tone={statusTone(vendor.status)}>{vendor.status}</Badge></td>
-                    {isAdmin && (
-                      <td>
-                        <div className="row-actions">
-                          <button className="button button--ghost small" onClick={() => onEdit(vendor)}>Edit</button>
-                          <button className="button button--ghost small text-danger" onClick={() => onDelete(vendor.id)}>Delete</button>
+        <div className="vendor-directory">
+          <SectionCard title="Vendor Directory" subtitle="Browse and manage active suppliers.">
+            <div className="section-toolbar">
+              <TextField label="Search suppliers" value={search} onChange={(e) => setSearch(e.target.value)} onBlur={() => void load()} placeholder="Name, GST, or category..." />
+              <button className="button button--ghost" type="button" onClick={() => void load()}>Search</button>
+            </div>
+            
+            <div className="data-grid">
+              {vendors.length > 0 ? (
+                vendors.map((vendor) => (
+                  <div key={vendor.id} className="data-card">
+                    <div className="data-card__header">
+                      <div className="activity-row">
+                        <div className="vendor-avatar-mini">{vendor.name.charAt(0)}</div>
+                        <div>
+                          <strong className="data-card__title">{vendor.name}</strong>
+                          <div className="muted small">{vendor.email || 'No email'}</div>
                         </div>
-                      </td>
+                      </div>
+                      <Badge tone={statusTone(vendor.status)}>{vendor.status}</Badge>
+                    </div>
+
+                    <div className="data-card__stats">
+                      <div className="data-stat-row">
+                        <span className="label">Category</span>
+                        <span className="value">{vendor.category || '—'}</span>
+                      </div>
+                      <div className="data-stat-row">
+                        <span className="label">GST Number</span>
+                        <span className="value">{vendor.gst_number || '—'}</span>
+                      </div>
+                      {vendor.contact_number && (
+                        <div className="data-stat-row">
+                          <span className="label">Phone</span>
+                          <span className="value">{vendor.contact_number}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {isAdmin && (
+                      <div className="data-card__footer">
+                        <button className="button button--ghost small" onClick={() => onEdit(vendor)}>Edit</button>
+                        <button className="button button--ghost small text-danger" onClick={() => onDelete(vendor.id)}>Delete</button>
+                      </div>
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state full-width">No vendors found matching your search.</div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
       </div>
     </>
   );

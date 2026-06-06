@@ -12,7 +12,10 @@ export type RouteKey =
   | 'invoices'
   | 'activity'
   | 'reports'
-  | 'vendor-submissions';
+  | 'vendor-submissions'
+  | 'users'
+  | 'forgot-password'
+  | 'reset-password';
 
 export function getRoute(): RouteKey {
   const raw = window.location.hash.replace(/^#\/?/, '');
@@ -63,6 +66,12 @@ function normalizeRoute(raw: string): RouteKey {
       return 'reports';
     case 'vendor-submissions':
       return 'vendor-submissions';
+    case 'users':
+      return 'users';
+    case 'forgot-password':
+      return 'forgot-password';
+    case 'reset-password':
+      return 'reset-password';
     default:
       return 'dashboard';
   }
