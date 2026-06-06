@@ -1,20 +1,38 @@
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import { authRouter } from "./auth/auth.routes.js";
 import { env } from "./config/env.js";
 import { apiRouteMap } from "./domain/api-route-map.js";
 
 export const app = express();
 
+function isAllowedOrigin(origin: string) {
+  if (env.clientOrigins.includes(origin)) {
+    return true;
+  }
+
+  return env.nodeEnv !== "production" && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+}
+
 app.use(helmet());
 app.use(
   cors({
-    origin: env.clientOrigin,
+    origin(origin, callback) {
+      if (!origin || isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin is not allowed by VendorBridge CORS."));
+    },
     credentials: true
   })
 );
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 
 app.get("/api/health", (_req, res) => {
@@ -29,3 +47,5 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/meta/routes", (_req, res) => {
   res.json({ routes: apiRouteMap });
 });
+
+app.use("/api/auth", authRouter);

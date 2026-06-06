@@ -2,6 +2,7 @@ export const apiRouteMap = {
   auth: {
     signup: "POST /api/auth/signup",
     login: "POST /api/auth/login",
+    refresh: "POST /api/auth/refresh",
     forgotPassword: "POST /api/auth/forgot-password",
     me: "GET /api/auth/me",
     logout: "POST /api/auth/logout"
