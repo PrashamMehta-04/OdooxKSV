@@ -239,16 +239,32 @@ authRouter.post("/forgot-password", async (req, res) => {
     });
 
     try {
-      const testAccount = await nodemailer.createTestAccount();
-      const transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
+      let transporter;
+      
+      // If user provided Mailtrap (or any SMTP) credentials in .env, use them!
+      if (env.smtpHost && env.smtpUser) {
+        transporter = nodemailer.createTransport({
+          host: env.smtpHost,
+          port: env.smtpPort,
+          secure: env.smtpPort === 465,
+          auth: {
+            user: env.smtpUser,
+            pass: env.smtpPass,
+          },
+        });
+      } else {
+        // Fallback to ethereal if .env is missing
+        const testAccount = await nodemailer.createTestAccount();
+        transporter = nodemailer.createTransport({
+          host: "smtp.ethereal.email",
+          port: 587,
+          secure: false,
+          auth: {
+            user: testAccount.user,
+            pass: testAccount.pass,
+          },
+        });
+      }
 
       const info = await transporter.sendMail({
         from: '"VendorBridge Security" <noreply@vendorbridge.com>',
@@ -257,7 +273,11 @@ authRouter.post("/forgot-password", async (req, res) => {
         text: `Your password reset OTP is: ${otp}`,
       });
 
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      if (!env.smtpHost) {
+        console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+      } else {
+        console.log("Email sent via external SMTP (e.g. Mailtrap)");
+      }
       console.log("OTP for", parsed.data.email, "is", otp);
     } catch (e) {
       console.error("Mail error", e);
