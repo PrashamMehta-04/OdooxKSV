@@ -10,6 +10,7 @@ import {
   Home,
   IndianRupee,
   KeyRound,
+  LayoutDashboard,
   LogIn,
   LogOut,
   Mail,
@@ -37,6 +38,8 @@ import { RfqsPage } from "./features/rfqs/RfqsPage";
 import { RfqCreationPage } from "./features/rfqs/RfqCreationPage";
 import { RfqDetailPage } from "./features/rfqs/RfqDetailPage";
 import { QuotationComparisonPage } from "./features/quotations/QuotationComparisonPage";
+import { ApprovalsPage } from "./features/approvals/ApprovalsPage";
+import { ApprovalDetailPage } from "./features/approvals/ApprovalDetailPage";
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
@@ -210,12 +213,7 @@ export function App() {
             <Route path=":id" element={<RfqDetailPage />} />
             <Route path=":id/compare" element={<QuotationComparisonPage />} />
           </Route>
-          <Route
-            element={<ProtectedRoute roles={["MANAGER"]} />}
-            path="/approvals"
-          >
-            <Route index element={<RoleModulePage title="Approvals" icon={ShieldCheck} />} />
-          </Route>
+
           <Route
             element={<ProtectedRoute roles={["PROCUREMENT_OFFICER"]} />}
             path="/procurement/invoices"
@@ -233,6 +231,19 @@ export function App() {
             path="/reports"
           >
             <Route index element={<RoleModulePage title="Reports" icon={BarChart3} />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute roles={["MANAGER"]} />}
+            path="/manager"
+          >
+            <Route index element={<RoleModulePage title="Manager Dashboard" icon={LayoutDashboard} />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute roles={["MANAGER", "PROCUREMENT_OFFICER", "ADMIN"]} />}
+            path="/approvals"
+          >
+            <Route index element={<ApprovalsPage />} />
+            <Route path=":id" element={<ApprovalDetailPage />} />
           </Route>
           <Route
             element={<ProtectedRoute roles={["VENDOR"]} />}
